@@ -2540,7 +2540,8 @@ function afterRender(el){
   // count-up: числа чистого капитала + любые .count-up[data-to]
   el.querySelectorAll('.nw-hero-value[data-to], .count-up[data-to]').forEach(node=>{
     const to=parseFloat(node.getAttribute('data-to'))||0;
-    const fmtFn=node.getAttribute('data-fmt')==='num'?fmtNum:fmt;
+    const df=node.getAttribute('data-fmt');
+    const fmtFn=df==='num'?fmtNum:df==='usd'?(n=>'$'+fmtNum(n)):fmt;
     const key=node.getAttribute('data-key')||node.className;
     const prev=_countMem[key];
     if(prev==null){ animateCount(node, to*0.84, to, fmtFn); }
@@ -2549,6 +2550,16 @@ function afterRender(el){
     else { node.textContent=fmtFn(to); }
     _countMem[key]=to;
   });
+  // пульс P&L позиций симулятора
+  if(curPage==='simulator' && store.sim && Array.isArray(store.sim.positions)){
+    store.sim.positions.forEach(p=>{
+      const prev=_simPnlMem[p.coin];
+      if(prev!=null && Math.abs(p.pnl-prev)>0.01 && !changed){
+        flashValue(el.querySelector(`[data-simpnl="${p.coin}"]`), p.pnl>=prev?'up':'down');
+      }
+      _simPnlMem[p.coin]=p.pnl;
+    });
+  }
   // пульс цены в watchlist при изменении котировки
   if(el.querySelector('[data-wprice]')){
     const by=cryptoById();
@@ -2566,6 +2577,7 @@ function afterRender(el){
 }
 const _prevPrices={};
 const _countMem={};
+const _simPnlMem={};
 function animateCount(node, from, to, fmtFn){
   if(REDUCED_MOTION){ node.textContent=fmtFn(to); return; }
   const t0=performance.now(), dur=760;
@@ -3584,6 +3596,7 @@ let _simPoll=null;
 async function goSim(){
   closeMoreSheet();closeDD();
   goPage('simulator');
+  fetchCryptoLive().then(d=>{cryptoLive=d;cryptoLastTs=Date.now();if(curPage==='simulator')render()}).catch(()=>{});
   await refreshSim();
   clearInterval(_simPoll);
   _simPoll=setInterval(()=>{ if(curPage==='simulator')refreshSim(true); else clearInterval(_simPoll); }, 15000);
@@ -3601,24 +3614,26 @@ function renderSim(){
   const up=s.totalPnl>=0;
   const posRows=s.positions.map(p=>{
     const m=simCoinMeta(p.coin); const u=p.pnl>=0;
-    return `<div class="card card-sm" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <div class="tx-cat" style="background:#8884;font-size:16px">${m.e}</div>
-      <div style="flex:1;min-width:0">
+    const sp=coinSpark(p.coin);
+    return `<div class="card card-sm tilt" data-simpos="${p.coin}" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;overflow:hidden">
+      ${sp?`<div class="spark-bg">${sparkSvg(sp,{w:200,h:40,color:u?'var(--green)':'var(--red)',fill:false,sw:1.3})}</div>`:''}
+      <div class="tx-cat" style="background:#8884;font-size:16px;position:relative">${m.e}</div>
+      <div style="flex:1;min-width:0;position:relative">
         <div class="tx-name">${m.name}</div>
-        <div class="tx-meta">${p.qty.toFixed(p.qty<1?6:3)} ${p.coin} · вход $${fmtByMagnitude(p.avgPrice)}</div>
+        <div class="tx-meta tnum">${p.qty.toFixed(p.qty<1?6:3)} ${p.coin} · вход $${fmtByMagnitude(p.avgPrice)}</div>
       </div>
-      <div style="text-align:right">
-        <div class="tx-amt">${simUSD(p.value)}</div>
-        <div style="font-size:.66rem;font-weight:700;color:${u?'var(--green)':'var(--red)'}">${u?'+':'−'}${simUSD(Math.abs(p.pnl))} (${p.pnlPct.toFixed(2)}%)</div>
+      <div style="text-align:right;position:relative">
+        <div class="tx-amt tnum">${simUSD(p.value)}</div>
+        <div class="tnum" data-simpnl="${p.coin}" style="font-size:.66rem;font-weight:700;color:${u?'var(--green)':'var(--red)'}">${u?'+':'−'}${simUSD(Math.abs(p.pnl))} (${p.pnlPct.toFixed(2)}%)</div>
       </div>
-      <button class="btn btn-ghost" style="font-size:.68rem;padding:4px 9px" onclick="openSimTrade('sell','${p.coin}')">Продать</button>
+      <button class="btn btn-ghost" style="font-size:.68rem;padding:4px 9px;position:relative" onclick="openSimTrade('sell','${p.coin}')">Продать</button>
     </div>`;
   }).join('');
   return `
   <div style="max-width:640px">
-    <div class="card nw-hero" style="cursor:default;background:linear-gradient(135deg,hsl(150,45%,20%),hsl(190,45%,24%))">
+    <div class="card nw-hero tilt" style="cursor:default;background:radial-gradient(130% 150% at 92% -10%,hsla(158,85%,55%,.4),transparent 58%),linear-gradient(135deg,hsl(152,52%,24%),hsl(190,50%,30%));border-color:hsla(160,70%,55%,.4)">
       <div class="nw-hero-label">Виртуальный счёт</div>
-      <div class="nw-hero-value">${simUSD(s.totalValue)}</div>
+      <div class="nw-hero-value tnum" data-key="sim-tv" data-fmt="usd" data-to="${s.totalValue}">${simUSD(s.totalValue)}</div>
       <div class="nw-hero-row">
         <span>💵 Свободно <b>${simUSD(s.cash)}</b></span>
         <span>📊 В позициях <b>${simUSD(s.posValue)}</b></span>
