@@ -23,7 +23,7 @@ function toPublicHolding(row, lots) {
       qty: Number(l.qty),
       price: Number(l.price),
       cur: l.currency,
-      date: l.date.toISOString().slice(0, 10),
+      date: l.date, // строка 'YYYY-MM-DD' (types.setTypeParser в db/pool.js)
     })),
   };
 }
@@ -77,14 +77,16 @@ router.post('/holdings', async (req, res) => {
     ).rows[0];
 
     if (!holding) {
-      const manualPrice = type === 'stock' ? lot.price : null;
-      const manualCur = type === 'stock' ? lot.cur : null;
+      const isStock = type === 'stock';
+      const manualPrice = isStock ? lot.price : null;
+      const manualCur = isStock ? lot.cur : null;
+      const manualTs = isStock ? new Date() : null;
       holding = (
         await client.query(
           `INSERT INTO portfolio_holdings (user_id, type, asset_id, name, sym, icon, color, manual_price, manual_price_cur, manual_price_ts)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, CASE WHEN $8 IS NULL THEN NULL ELSE now() END)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
            RETURNING *`,
-          [req.userId, type, assetId, name, sym, icon || null, color || null, manualPrice, manualCur]
+          [req.userId, type, assetId, name, sym, icon || null, color || null, manualPrice, manualCur, manualTs]
         )
       ).rows[0];
     } else if (type === 'stock') {
@@ -136,7 +138,7 @@ router.post('/holdings/:id/lots', async (req, res) => {
       qty: Number(result.rows[0].qty),
       price: Number(result.rows[0].price),
       cur: result.rows[0].currency,
-      date: result.rows[0].date.toISOString().slice(0, 10),
+      date: result.rows[0].date, // строка 'YYYY-MM-DD' (types.setTypeParser в db/pool.js)
     },
   });
 });

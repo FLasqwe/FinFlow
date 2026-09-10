@@ -13,7 +13,7 @@ function toPublicTx(row) {
     amount: Number(row.amount),
     category: row.category,
     note: row.note,
-    date: row.date.toISOString().slice(0, 10),
+    date: row.date, // строка 'YYYY-MM-DD' (см. types.setTypeParser в db/pool.js)
   };
 }
 

@@ -1,0 +1,3424 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinFlow — Личные финансы</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   GOOGLE FONTS
+═══════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN TOKENS — OKLCH-inspired HSL ramp
+═══════════════════════════════════════════════════════ */
+:root, [data-theme="dark"] {
+  /* Оттенок акцентного цвета (0-360) — настраивается пользователем в профиле */
+  --acc-h: 252;
+  /* Neutral ramp — 11 deliberate lightness steps */
+  --n0:  hsl(228,20%,98%);
+  --n1:  hsl(228,18%,94%);
+  --n2:  hsl(228,16%,86%);
+  --n3:  hsl(228,14%,72%);
+  --n4:  hsl(228,12%,56%);
+  --n5:  hsl(228,11%,40%);
+  --n6:  hsl(228,12%,28%);
+  --n7:  hsl(228,14%,20%);
+  --n8:  hsl(228,16%,14%);
+  --n9:  hsl(228,18%,10%);
+  --n10: hsl(228,20%,7%);
+
+  /* Surface roles */
+  --bg:      var(--n10);
+  --s1:      var(--n9);
+  --s2:      var(--n8);
+  --s3:      var(--n7);
+  --s4:      var(--n6);
+  --border:  hsl(228,16%,20%);
+  --border2: hsl(228,14%,26%);
+
+  /* Text roles */
+  --t1: hsl(228,20%,96%);
+  --t2: hsl(228,12%,68%);
+  --t3: hsl(228,10%,44%);
+  --t4: hsl(228,12%,28%);
+
+  /* Accent — violet, stable hue across lightness */
+  --acc:      hsl(var(--acc-h),78%,65%);
+  --acc2:     hsl(var(--acc-h),72%,56%);
+  --acc3:     hsl(var(--acc-h),68%,46%);
+  --acc-glow: hsla(var(--acc-h),78%,65%,0.20);
+  --acc-dim:  hsla(var(--acc-h),78%,65%,0.10);
+  --acc-soft: hsla(var(--acc-h),78%,65%,0.06);
+
+  /* Semantic — tuned to sit beside violet accent */
+  --green:    hsl(158,60%,48%);
+  --green-b:  hsla(158,60%,48%,0.10);
+  --green-br: hsla(158,60%,48%,0.25);
+  --red:      hsl(4,68%,62%);
+  --red-b:    hsla(4,68%,62%,0.10);
+  --red-br:   hsla(4,68%,62%,0.25);
+  --yellow:   hsl(40,88%,56%);
+  --yellow-b: hsla(40,88%,56%,0.10);
+  --blue:     hsl(210,76%,60%);
+  --blue-b:   hsla(210,76%,60%,0.10);
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px hsla(0,0%,0%,0.4), 0 0 0 1px var(--border);
+  --shadow:    0 4px 16px hsla(0,0%,0%,0.45);
+  --shadow-lg: 0 12px 48px hsla(0,0%,0%,0.6), 0 0 0 1px var(--border);
+  --shadow-glow: 0 4px 24px var(--acc-glow);
+
+  /* Radii */
+  --r1: 4px; --r2: 8px; --r3: 12px; --r4: 16px; --r5: 22px; --r6: 32px;
+
+  /* Sidebar */
+  --sidebar-w: 228px;
+  --topbar-h: 54px;
+}
+
+[data-theme="light"] {
+  --n0:  hsl(228,20%,8%);
+  --n10: hsl(228,22%,97%);
+  --n9:  hsl(228,18%,100%);
+  --n8:  hsl(228,16%,96%);
+  --n7:  hsl(228,14%,91%);
+  --n6:  hsl(228,12%,82%);
+  --n5:  hsl(228,10%,64%);
+  --n4:  hsl(228,10%,48%);
+  --n3:  hsl(228,12%,34%);
+  --n2:  hsl(228,14%,22%);
+  --n1:  hsl(228,16%,14%);
+
+  --bg:      hsl(228,22%,95%);
+  --s1:      hsl(228,20%,100%);
+  --s2:      hsl(228,18%,97%);
+  --s3:      hsl(228,14%,92%);
+  --s4:      hsl(228,12%,85%);
+  --border:  hsl(228,14%,86%);
+  --border2: hsl(228,12%,76%);
+
+  --t1: hsl(228,24%,12%);
+  --t2: hsl(228,14%,36%);
+  --t3: hsl(228,10%,56%);
+  --t4: hsl(228,10%,72%);
+
+  --acc:      hsl(var(--acc-h),70%,56%);
+  --acc2:     hsl(var(--acc-h),68%,46%);
+  --acc3:     hsl(var(--acc-h),66%,38%);
+  --acc-glow: hsla(var(--acc-h),70%,56%,0.16);
+  --acc-dim:  hsla(var(--acc-h),70%,56%,0.08);
+  --acc-soft: hsla(var(--acc-h),70%,56%,0.04);
+
+  --green:    hsl(158,54%,36%);
+  --green-b:  hsla(158,54%,36%,0.08);
+  --green-br: hsla(158,54%,36%,0.20);
+  --red:      hsl(4,64%,52%);
+  --red-b:    hsla(4,64%,52%,0.08);
+  --red-br:   hsla(4,64%,52%,0.20);
+  --yellow:   hsl(40,80%,44%);
+  --yellow-b: hsla(40,80%,44%,0.08);
+  --blue:     hsl(210,72%,48%);
+  --blue-b:   hsla(210,72%,48%,0.08);
+
+  --shadow-sm: 0 1px 3px hsla(0,0%,0%,0.08), 0 0 0 1px var(--border);
+  --shadow:    0 4px 16px hsla(0,0%,0%,0.10);
+  --shadow-lg: 0 12px 48px hsla(0,0%,0%,0.16), 0 0 0 1px var(--border);
+  --shadow-glow: 0 4px 24px var(--acc-glow);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  transition: background 0.28s ease, color 0.28s ease;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--s4); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+/* ═══════════════════════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════════════════════ */
+#auth-screen {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, hsla(var(--acc-h),78%,65%,0.14) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 90% 90%, hsla(210,76%,60%,0.06) 0%, transparent 60%),
+    var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px; overflow-y: auto;
+}
+.auth-wrap {
+  width: 100%; max-width: 420px;
+  animation: authIn 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes authIn { from { opacity:0; transform:translateY(24px) scale(0.98) } to { opacity:1; transform:none } }
+
+.auth-logo {
+  display: flex; align-items: center; gap: 12px;
+  justify-content: center; margin-bottom: 32px;
+}
+.auth-logo-icon {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--acc), hsl(calc(var(--acc-h) + 20),78%,68%));
+  border-radius: var(--r3); display: grid; place-items: center;
+  font-size: 22px; box-shadow: 0 4px 24px var(--acc-glow), 0 0 0 1px hsla(var(--acc-h),78%,65%,0.3);
+}
+.auth-logo-name {
+  font-size: 1.6rem; font-weight: 900; color: var(--t1);
+  letter-spacing: -0.04em;
+}
+.auth-logo-sub {
+  font-size: 0.65rem; color: var(--t3); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.auth-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r6);
+  padding: 28px 32px 32px;
+  box-shadow: var(--shadow-lg);
+  position: relative; overflow: hidden;
+}
+.auth-card::before {
+  content: '';
+  position: absolute; top: -1px; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, hsla(var(--acc-h),78%,65%,0.4), transparent);
+}
+
+.auth-tabs {
+  display: grid; grid-template-columns: 1fr 1fr;
+  background: var(--bg); border-radius: var(--r2);
+  padding: 3px; gap: 3px; margin-bottom: 24px;
+  border: 1px solid var(--border);
+}
+.auth-tab {
+  padding: 9px; border: none; border-radius: calc(var(--r2) - 2px);
+  background: none; color: var(--t3);
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  transition: all 0.18s ease; font-family: inherit;
+}
+.auth-tab.on {
+  background: var(--s2); color: var(--t1);
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-title { font-size: 1.05rem; font-weight: 800; color: var(--t1); margin-bottom: 3px; }
+.auth-sub { font-size: 0.76rem; color: var(--t3); margin-bottom: 20px; }
+
+.fgroup { margin-bottom: 14px; }
+.flbl {
+  display: block; font-size: 0.66rem; font-weight: 700; color: var(--t2);
+  margin-bottom: 5px; letter-spacing: 0.07em; text-transform: uppercase;
+}
+.finput {
+  width: 100%;
+  background: var(--s2);
+  border: 1.5px solid var(--border);
+  color: var(--t1); border-radius: var(--r2);
+  padding: 10px 13px; font-size: 0.875rem;
+  font-family: inherit; outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+.finput:hover { background: var(--s3); }
+.finput:focus {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-dim);
+  background: var(--s2);
+}
+.finput::placeholder { color: var(--t4); }
+.finput.err { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-b); }
+.ferr {
+  font-size: 0.67rem; color: var(--red); margin-top: 4px;
+  display: none; align-items: center; gap: 4px;
+}
+.ferr.show { display: flex; }
+.input-wrap { position: relative; }
+.input-wrap .finput { padding-left: 38px; }
+.input-wrap .iico {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 0.88rem; color: var(--t3); pointer-events: none;
+}
+.eye-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--t3); cursor: pointer;
+  padding: 4px; border-radius: var(--r1); font-size: 0.82rem;
+  transition: color 0.14s;
+}
+.eye-btn:hover { color: var(--t2); }
+
+.strength-bar { height: 3px; background: var(--s3); border-radius: 99px; margin-top: 6px; overflow: hidden; }
+.strength-fill { height: 100%; border-radius: 99px; transition: width 0.3s ease, background 0.3s ease; }
+.strength-lbl { font-size: 0.62rem; color: var(--t3); margin-top: 3px; }
+
+.av-pick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.av-opt {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 18px;
+  border: 2px solid transparent; cursor: pointer;
+  transition: all 0.16s ease; background: var(--s3);
+}
+.av-opt:hover { border-color: var(--border2); transform: scale(1.08); }
+.av-opt.sel {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-dim);
+  transform: scale(1.05);
+}
+
+.btn-auth {
+  width: 100%; padding: 12px; border: none; border-radius: var(--r2);
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  color: #fff; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.18s ease; margin-top: 4px;
+  box-shadow: 0 4px 18px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.12);
+  position: relative; overflow: hidden;
+}
+.btn-auth:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.12);
+}
+.btn-auth:active { transform: scale(0.98); }
+
+.auth-footer { text-align: center; margin-top: 16px; font-size: 0.74rem; color: var(--t3); }
+.auth-link { color: var(--acc); cursor: pointer; font-weight: 600; }
+.auth-link:hover { text-decoration: underline; color: hsl(var(--acc-h),78%,70%); }
+.form-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* 2FA */
+.twofa-digits { display: flex; gap: 8px; justify-content: center; margin: 18px 0; }
+.twofa-digit {
+  width: 46px; height: 54px; text-align: center;
+  font-size: 1.5rem; font-weight: 800;
+  background: var(--s2); border: 1.5px solid var(--border);
+  color: var(--t1); border-radius: var(--r2); outline: none;
+  transition: border-color 0.16s, box-shadow 0.16s;
+  font-variant-numeric: tabular-nums;
+}
+.twofa-digit:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-dim); }
+.twofa-code-display {
+  background: var(--s2); border: 1px solid var(--border); border-radius: var(--r2);
+  padding: 12px 16px; text-align: center;
+  font-size: 1.7rem; font-weight: 900; letter-spacing: 0.22em;
+  color: var(--acc); font-variant-numeric: tabular-nums; margin: 12px 0;
+}
+.twofa-timer { font-size: 0.7rem; color: var(--t3); text-align: center; margin-top: 4px; }
+
+/* ═══════════════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════════════ */
+#app-screen { display: none; height: 100vh; overflow: hidden; }
+#app-screen.show { display: flex; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; overflow-y: auto;
+  transition: background 0.28s, border-color 0.28s;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--acc), hsl(calc(var(--acc-h) + 20),78%,68%));
+  border-radius: var(--r2); display: grid; place-items: center;
+  font-size: 15px; flex-shrink: 0;
+  box-shadow: 0 2px 10px var(--acc-glow);
+}
+.logo-name {
+  font-size: 0.98rem; font-weight: 900; color: var(--t1);
+  letter-spacing: -0.025em;
+}
+.logo-tag {
+  font-size: 0.52rem; color: var(--acc); font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  background: var(--acc-dim); padding: 1px 5px; border-radius: 99px;
+  border: 1px solid var(--acc-soft);
+}
+
+.nav { padding: 10px 8px; flex: 1; }
+.nav-lbl {
+  font-size: 0.57rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--t4);
+  padding: 0 8px 5px; margin-top: 8px;
+}
+.nav-lbl:first-child { margin-top: 0; }
+.nav-btn {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 8px 10px; border: none; background: none;
+  color: var(--t3); font-size: 0.8rem; font-weight: 500;
+  border-radius: var(--r2); cursor: pointer; margin-bottom: 1px;
+  transition: background 0.14s, color 0.14s; text-align: left;
+  font-family: inherit; position: relative;
+}
+.nav-btn:hover { background: var(--s2); color: var(--t2); }
+.nav-btn.on {
+  background: var(--acc-dim);
+  color: hsl(var(--acc-h),78%,72%);
+  font-weight: 600;
+}
+.nav-btn.on::before {
+  content: '';
+  position: absolute; left: 0; top: 25%; bottom: 25%;
+  width: 3px; border-radius: 0 2px 2px 0;
+  background: var(--acc);
+}
+.nav-ico { font-size: 0.9rem; width: 18px; text-align: center; flex-shrink: 0; opacity: 0.85; }
+.nav-btn.on .nav-ico { opacity: 1; }
+.nav-badge {
+  margin-left: auto; background: var(--acc); color: #fff;
+  font-size: 0.56rem; font-weight: 800; padding: 1px 6px;
+  border-radius: 99px; letter-spacing: 0.02em;
+}
+
+.sidebar-foot { padding: 10px 8px 12px; border-top: 1px solid var(--border); }
+.month-row { display: flex; align-items: center; gap: 5px; padding: 2px 8px; }
+.mbtn {
+  background: var(--s2); border: 1px solid var(--border);
+  color: var(--t2); width: 24px; height: 24px; border-radius: var(--r1);
+  cursor: pointer; font-size: 0.78rem; display: grid; place-items: center;
+  flex-shrink: 0; transition: background 0.14s, color 0.14s;
+}
+.mbtn:hover { background: var(--s3); color: var(--t1); }
+.mlbl { flex: 1; text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--t1); }
+
+.sidebar-user {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px 8px; margin: 6px 8px 0;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r3); cursor: pointer;
+  transition: background 0.14s, border-color 0.14s;
+}
+.sidebar-user:hover { background: var(--s3); border-color: var(--border2); }
+.su-av {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 15px;
+  flex-shrink: 0; background: var(--s4); overflow: hidden;
+  border: 1.5px solid var(--border2);
+}
+.su-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.su-name { font-size: 0.76rem; font-weight: 700; color: var(--t1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su-email { font-size: 0.62rem; color: var(--t3); }
+
+/* ── TOPBAR ── */
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: var(--topbar-h);
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; flex-shrink: 0;
+  position: sticky; top: 0; z-index: 20;
+  transition: background 0.28s, border-color 0.28s;
+  backdrop-filter: blur(8px);
+}
+.topbar-l { display: flex; align-items: center; gap: 10px; }
+.topbar-title { font-size: 0.94rem; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
+.topbar-month {
+  font-size: 0.68rem; color: var(--t3);
+  background: var(--s2); border: 1px solid var(--border);
+  padding: 3px 10px; border-radius: 99px; font-weight: 600;
+}
+.topbar-r { display: flex; align-items: center; gap: 8px; }
+
+/* theme button */
+.theme-btn {
+  background: var(--s2); border: 1px solid var(--border);
+  color: var(--t2); width: 34px; height: 34px; border-radius: var(--r2);
+  cursor: pointer; display: grid; place-items: center; font-size: 1rem;
+  transition: all 0.14s;
+}
+.theme-btn:hover { background: var(--s3); color: var(--t1); border-color: var(--border2); }
+
+/* account button */
+.acct-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 5px 10px 5px 6px;
+  cursor: pointer; transition: all 0.14s; position: relative;
+}
+.acct-btn:hover { background: var(--s3); border-color: var(--border2); }
+.acct-av {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 15px;
+  background: var(--acc-dim); border: 1.5px solid hsla(var(--acc-h),78%,65%,0.3);
+  flex-shrink: 0; overflow: hidden;
+}
+.acct-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.acct-name { font-size: 0.74rem; font-weight: 700; color: var(--t1); }
+.acct-role { font-size: 0.58rem; color: var(--t3); }
+.acct-arr { font-size: 0.6rem; color: var(--t3); transition: transform 0.16s ease; }
+.acct-btn.open .acct-arr { transform: rotate(180deg); }
+
+/* dropdown */
+.acct-dd {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 220px; background: var(--s1);
+  border: 1px solid var(--border); border-radius: var(--r4);
+  box-shadow: var(--shadow-lg);
+  z-index: 300; overflow: hidden;
+  animation: ddIn 0.18s cubic-bezier(0.16,1,0.3,1);
+  display: none;
+}
+.acct-dd.open { display: block; }
+@keyframes ddIn { from { opacity:0; transform:translateY(-8px) scale(0.97) } to { opacity:1; transform:none } }
+.dd-hdr {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--acc-soft), transparent);
+  position: relative;
+}
+.dd-hdr::after {
+  content: '';
+  position: absolute; top: -1px; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, hsla(var(--acc-h),78%,65%,0.3), transparent);
+}
+.dd-av {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 22px;
+  background: var(--s2); border: 2px solid var(--border2);
+  margin-bottom: 8px; overflow: hidden;
+}
+.dd-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.dd-name { font-size: 0.88rem; font-weight: 800; color: var(--t1); }
+.dd-email { font-size: 0.7rem; color: var(--t3); margin-top: 1px; }
+.dd-joined { font-size: 0.62rem; color: var(--t4); margin-top: 5px; }
+.dd-body { padding: 5px 6px; }
+.dd-item {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; padding: 8px 10px; border: none;
+  background: none; color: var(--t2);
+  font-size: 0.77rem; font-weight: 500;
+  border-radius: var(--r2); cursor: pointer;
+  transition: background 0.12s, color 0.12s; text-align: left; font-family: inherit;
+}
+.dd-item:hover { background: var(--s2); color: var(--t1); }
+.dd-item-ico { font-size: 0.9rem; width: 16px; text-align: center; flex-shrink: 0; }
+.dd-sep { height: 1px; background: var(--border); margin: 4px 6px; }
+.dd-item.danger { color: var(--red); }
+.dd-item.danger:hover { background: var(--red-b); }
+
+.content { padding: 20px 22px; flex: 1; }
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: none; border-radius: var(--r2);
+  font-size: 0.77rem; font-weight: 600; cursor: pointer;
+  transition: all 0.14s ease; font-family: inherit; white-space: nowrap;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary {
+  background: var(--acc); color: #fff;
+  padding: 8px 15px;
+  box-shadow: 0 2px 12px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+}
+.btn-primary:hover {
+  background: var(--acc2);
+  box-shadow: 0 4px 18px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: var(--s2); color: var(--t2);
+  padding: 8px 13px; border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--t1); background: var(--s3); border-color: var(--border2); }
+.btn-danger { background: var(--red-b); color: var(--red); padding: 7px 12px; border: 1px solid var(--red-br); }
+.btn-danger:hover { background: var(--red-br); }
+
+/* ═══════════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════════ */
+.card {
+  background: var(--s1);
+  border-radius: var(--r4); border: 1px solid var(--border);
+  padding: 18px;
+  transition: background 0.28s, border-color 0.28s;
+  position: relative;
+}
+.card-sm { padding: 12px 14px; }
+.ctitle {
+  font-size: 0.60rem; font-weight: 800; letter-spacing: 0.10em;
+  text-transform: uppercase; color: var(--t3); margin-bottom: 13px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STAT CARDS — premium gradient treatment
+═══════════════════════════════════════════════════════ */
+.stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 12px; margin-bottom: 16px;
+}
+.stat {
+  border-radius: var(--r4); padding: 16px 18px;
+  border: 1px solid transparent;
+  position: relative; overflow: hidden;
+}
+/* soft inner glow from bottom-right */
+.stat::after {
+  content: ''; position: absolute; bottom: -30%; right: -20%;
+  width: 90px; height: 90px; border-radius: 50%;
+  opacity: 0.12; pointer-events: none;
+}
+[data-theme="dark"] .stat-bal { background: linear-gradient(145deg, hsl(var(--acc-h),30%,14%), hsl(var(--acc-h),24%,10%)); border-color: hsla(var(--acc-h),78%,65%,0.22); }
+[data-theme="dark"] .stat-bal::after { background: hsl(var(--acc-h),78%,65%); }
+[data-theme="dark"] .stat-inc { background: linear-gradient(145deg, hsl(158,28%,13%), hsl(158,22%,10%)); border-color: hsla(158,60%,48%,0.20); }
+[data-theme="dark"] .stat-inc::after { background: hsl(158,60%,48%); }
+[data-theme="dark"] .stat-exp { background: linear-gradient(145deg, hsl(4,28%,14%), hsl(4,22%,10%)); border-color: hsla(4,68%,62%,0.20); }
+[data-theme="dark"] .stat-exp::after { background: hsl(4,68%,62%); }
+[data-theme="dark"] .stat-sav { background: linear-gradient(145deg, hsl(40,28%,14%), hsl(40,22%,10%)); border-color: hsla(40,88%,56%,0.20); }
+[data-theme="dark"] .stat-sav::after { background: hsl(40,88%,56%); }
+
+[data-theme="light"] .stat-bal { background: linear-gradient(145deg, hsl(var(--acc-h),60%,97%), hsl(var(--acc-h),40%,99%)); border-color: hsla(var(--acc-h),70%,56%,0.18); }
+[data-theme="light"] .stat-inc { background: linear-gradient(145deg, hsl(158,50%,96%), hsl(158,30%,98%)); border-color: hsla(158,54%,36%,0.16); }
+[data-theme="light"] .stat-exp { background: linear-gradient(145deg, hsl(4,50%,97%), hsl(4,30%,99%)); border-color: hsla(4,64%,52%,0.16); }
+[data-theme="light"] .stat-sav { background: linear-gradient(145deg, hsl(40,50%,96%), hsl(40,30%,98%)); border-color: hsla(40,80%,44%,0.16); }
+
+.stat-ico {
+  width: 32px; height: 32px; border-radius: var(--r2);
+  display: grid; place-items: center; font-size: 14px; margin-bottom: 10px;
+}
+.stat-bal .stat-ico { background: hsla(var(--acc-h),78%,65%,0.14); }
+.stat-inc .stat-ico { background: var(--green-b); }
+.stat-exp .stat-ico { background: var(--red-b); }
+.stat-sav .stat-ico { background: var(--yellow-b); }
+
+.stat-lbl {
+  font-size: 0.61rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--t2); margin-bottom: 4px;
+}
+.stat-val {
+  font-size: 1.5rem; font-weight: 900; line-height: 1.1;
+  letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.stat-sub { font-size: 0.67rem; color: var(--t3); margin-top: 4px; }
+.stat-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 0.61rem; font-weight: 700; padding: 2px 7px;
+  border-radius: 99px; margin-top: 8px; letter-spacing: 0.02em;
+}
+.tag-g { background: var(--green-b); color: var(--green); }
+.tag-r { background: var(--red-b); color: var(--red); }
+
+/* ═══════════════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════════════ */
+.charts-row {
+  display: grid; grid-template-columns: 1fr 280px;
+  gap: 12px; margin-bottom: 16px;
+}
+canvas { display: block; max-width: 100%; }
+
+/* ═══════════════════════════════════════════════════════
+   INSIGHTS
+═══════════════════════════════════════════════════════ */
+.insight {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 9px 12px; border-radius: var(--r2);
+  border-left: 3px solid transparent; margin-bottom: 7px;
+}
+.insight:last-child { margin-bottom: 0; }
+.ins-g { background: var(--green-b); border-color: var(--green); }
+.ins-r { background: var(--red-b); border-color: var(--red); }
+.ins-y { background: var(--yellow-b); border-color: var(--yellow); }
+.ins-b { background: var(--blue-b); border-color: var(--blue); }
+.ins-ico { font-size: 0.92rem; flex-shrink: 0; margin-top: 1px; }
+.ins-title { font-size: 0.75rem; font-weight: 700; color: var(--t1); margin-bottom: 2px; }
+.ins-text { font-size: 0.69rem; color: var(--t2); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════
+   TRANSACTIONS
+═══════════════════════════════════════════════════════ */
+.search-box {
+  width: 100%; background: var(--s2); border: 1px solid var(--border);
+  color: var(--t1); border-radius: var(--r2); padding: 9px 14px;
+  font-size: 0.82rem; font-family: inherit; outline: none;
+  margin-bottom: 11px; transition: border-color 0.16s, background 0.16s;
+}
+.search-box:focus { border-color: var(--acc); background: var(--s1); }
+.search-box::placeholder { color: var(--t3); }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+.chip {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--s2); border: 1px solid var(--border);
+  color: var(--t2); border-radius: 99px; padding: 4px 11px;
+  font-size: 0.69rem; font-weight: 600; cursor: pointer; transition: all 0.13s;
+}
+.chip:hover { border-color: var(--border2); color: var(--t1); background: var(--s3); }
+.chip.on { border-color: var(--acc); color: hsl(var(--acc-h),78%,72%); background: var(--acc-dim); }
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+.day-lbl {
+  font-size: 0.65rem; font-weight: 700;
+  text-transform: capitalize; color: var(--t3);
+  letter-spacing: 0.04em; padding: 3px 0 7px;
+}
+.tx-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 11px; border-radius: var(--r2);
+  transition: background 0.12s; cursor: default;
+}
+.tx-item:hover { background: var(--s2); }
+.tx-cat {
+  width: 34px; height: 34px; border-radius: var(--r2);
+  display: grid; place-items: center; font-size: 15px; flex-shrink: 0;
+}
+.tx-body { flex: 1; min-width: 0; }
+.tx-name {
+  font-size: 0.8rem; font-weight: 600; color: var(--t1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tx-meta { font-size: 0.65rem; color: var(--t3); margin-top: 1px; }
+.tx-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.tx-amt { font-size: 0.81rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tx-amt.inc { color: var(--green); }
+.tx-amt.exp { color: var(--red); }
+.tx-del {
+  background: none; border: none; color: var(--t4);
+  cursor: pointer; font-size: 0.72rem; padding: 2px 5px;
+  border-radius: var(--r1); transition: color 0.12s, background 0.12s; opacity: 0;
+}
+.tx-item:hover .tx-del { opacity: 1; }
+.tx-del:hover { color: var(--red); background: var(--red-b); }
+
+/* ═══════════════════════════════════════════════════════
+   BUDGETS
+═══════════════════════════════════════════════════════ */
+.bud-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 12px; }
+.bud-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r4); padding: 16px;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+.bud-card:hover { border-color: var(--border2); box-shadow: var(--shadow-sm); }
+.bud-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.bud-ico { width: 32px; height: 32px; border-radius: var(--r2); display: grid; place-items: center; font-size: 14px; flex-shrink: 0; }
+.bud-info { flex: 1; min-width: 0; }
+.bud-name { font-size: 0.8rem; font-weight: 700; color: var(--t1); }
+.bud-spent { font-size: 0.65rem; color: var(--t3); margin-top: 1px; }
+.bud-pct { font-size: 0.76rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.track {
+  height: 5px; background: var(--s3); border-radius: 99px;
+  overflow: hidden; margin-bottom: 7px;
+}
+.fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+.bud-ft { display: flex; justify-content: space-between; font-size: 0.64rem; color: var(--t3); }
+
+/* ═══════════════════════════════════════════════════════
+   ANALYTICS
+═══════════════════════════════════════════════════════ */
+.ana-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
+.ana-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+/* ═══════════════════════════════════════════════════════
+   MARKETS
+═══════════════════════════════════════════════════════ */
+.markets-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.market-tab {
+  padding: 7px 16px; border: 1px solid var(--border);
+  border-radius: 99px; background: var(--s2); color: var(--t2);
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  transition: all 0.14s; font-family: inherit;
+}
+.market-tab:hover { border-color: var(--border2); color: var(--t1); background: var(--s3); }
+.market-tab.on { background: var(--acc-dim); border-color: var(--acc); color: hsl(var(--acc-h),78%,72%); }
+
+.markets-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 13px; }
+.market-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r4); padding: 18px; cursor: pointer;
+  transition: border-color 0.14s, box-shadow 0.14s, transform 0.14s;
+  position: relative; overflow: hidden;
+}
+.market-card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+.market-card-hd { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.market-icon {
+  width: 40px; height: 40px; border-radius: var(--r2);
+  display: grid; place-items: center; font-size: 20px; flex-shrink: 0;
+}
+.market-name { font-size: 0.88rem; font-weight: 700; color: var(--t1); }
+.market-sym { font-size: 0.65rem; color: var(--t3); font-weight: 600; letter-spacing: 0.03em; }
+.market-price {
+  font-size: 1.4rem; font-weight: 900; color: var(--t1);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-bottom: 5px;
+}
+.market-change {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 0.73rem; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+}
+.market-change.up { background: var(--green-b); color: var(--green); }
+.market-change.dn { background: var(--red-b); color: var(--red); }
+.market-meta { font-size: 0.65rem; color: var(--t3); margin-top: 6px; }
+.market-sparkline { margin-top: 11px; height: 46px; }
+.market-updated { font-size: 0.60rem; color: var(--t4); margin-top: 7px; display: flex; align-items: center; gap: 4px; }
+
+.markets-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.markets-title { font-size: 0.94rem; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
+.refresh-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--s2); border: 1px solid var(--border);
+  color: var(--t2); border-radius: var(--r2); padding: 6px 12px;
+  font-size: 0.73rem; font-weight: 600; cursor: pointer;
+  transition: all 0.14s; font-family: inherit;
+}
+.refresh-btn:hover { background: var(--s3); color: var(--t1); border-color: var(--border2); }
+.refresh-btn.spinning .r-ico { animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.r-ico { display: inline-block; }
+
+.mkt-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; margin-bottom: 18px; }
+.mkt-sum-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 13px 16px;
+}
+.mkt-sum-lbl { font-size: 0.60rem; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.mkt-sum-val { font-size: 1.05rem; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; }
+.mkt-sum-sub { font-size: 0.63rem; color: var(--t3); margin-top: 2px; }
+
+.fng-wrap {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r4); padding: 16px 20px; margin-bottom: 16px;
+}
+.fng-gauge { width: 72px; height: 72px; flex-shrink: 0; position: relative; }
+.fng-gauge svg { width: 100%; height: 100%; }
+.fng-val { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fng-num { font-size: 1.25rem; font-weight: 900; color: var(--t1); line-height: 1; }
+.fng-word { font-size: 0.52rem; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em; }
+.fng-info { flex: 1; }
+.fng-title { font-size: 0.82rem; font-weight: 700; color: var(--t1); margin-bottom: 3px; }
+.fng-sub { font-size: 0.71rem; color: var(--t3); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════
+   ASSET DETAIL MODAL — крупный график + статистика по клику на актив
+═══════════════════════════════════════════════════════ */
+.asset-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.asset-icon { width: 48px; height: 48px; border-radius: var(--r3); display: grid; place-items: center; flex-shrink: 0; }
+.asset-name { font-size: 1rem; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
+.asset-sym { font-size: 0.68rem; color: var(--t3); font-weight: 600; letter-spacing: 0.03em; }
+.asset-price-big { font-size: 1.3rem; font-weight: 900; color: var(--t1); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.asset-tf-tog { display: flex; gap: 5px; margin-bottom: 13px; flex-wrap: wrap; }
+.asset-tf-btn {
+  border: 1px solid var(--border); background: var(--s2); color: var(--t3);
+  border-radius: var(--r2); padding: 5px 12px; font-size: 0.68rem; font-weight: 700;
+  cursor: pointer; transition: all 0.14s; font-family: inherit;
+}
+.asset-tf-btn:hover { color: var(--t1); border-color: var(--border2); }
+.asset-tf-btn.on { background: var(--acc-dim); border-color: var(--acc); color: hsl(var(--acc-h),78%,72%); }
+.asset-chart-wrap { height: 220px; margin-bottom: 8px; position: relative; }
+.asset-chart-wrap canvas { width: 100%; height: 100%; display: block; }
+.asset-chart-note { font-size: 0.64rem; color: var(--t4); margin-bottom: 15px; line-height: 1.5; }
+.asset-stats-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 9px; }
+.asset-stat { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r2); padding: 9px 12px; }
+.asset-stat-lbl { font-size: 0.58rem; color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.asset-stat-val { font-size: 0.78rem; font-weight: 700; color: var(--t1); font-variant-numeric: tabular-nums; }
+
+/* ═══════════════════════════════════════════════════════
+   DASHBOARD CUSTOMIZATION
+═══════════════════════════════════════════════════════ */
+.dash-toolbar { display: flex; justify-content: flex-end; margin-bottom: 11px; }
+.dash-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 11px; align-items: start; }
+.dash-widget { min-width: 0; }
+.dash-w-stats, .dash-w-marketTicker { grid-column: 1 / -1; }
+@media (max-width: 860px) { .dash-grid { grid-template-columns: 1fr; } }
+.dash-set-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+.dash-set-row:last-child { border-bottom: none; }
+.dash-set-row label { display: flex; align-items: center; gap: 9px; flex: 1; cursor: pointer; color: var(--t1); }
+.dash-set-btns { display: flex; gap: 3px; }
+.dash-set-btn {
+  width: 26px; height: 26px; border-radius: var(--r2);
+  border: 1px solid var(--border); background: var(--s2); color: var(--t2);
+  cursor: pointer; font-size: .75rem; display: grid; place-items: center;
+}
+.dash-set-btn:hover { background: var(--s3); color: var(--t1); }
+.dash-set-btn:disabled { opacity: .3; cursor: default; }
+.dash-ticker-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.dash-ticker-row:last-child { border-bottom: none; }
+
+/* ═══════════════════════════════════════════════════════
+   PORTFOLIO
+═══════════════════════════════════════════════════════ */
+.port-hero {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 13px;
+  margin-bottom: 18px;
+}
+.port-hero-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r4); padding: 16px 18px;
+}
+.port-hero-lbl { font-size: 0.62rem; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+.port-hero-val { font-size: 1.15rem; font-weight: 900; color: var(--t1); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.port-hero-sub { font-size: 0.68rem; margin-top: 3px; font-weight: 700; }
+
+.port-alloc { display: flex; height: 10px; border-radius: 99px; overflow: hidden; margin-bottom: 8px; background: var(--s3); }
+.port-alloc-seg { height: 100%; }
+.port-alloc-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.port-alloc-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: var(--t3); }
+.port-alloc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.port-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 13px 15px; margin-bottom: 9px;
+  cursor: pointer; transition: border-color 0.14s, transform 0.14s;
+}
+.port-row:hover { border-color: var(--border2); transform: translateY(-1px); }
+.port-row-ico { width: 38px; height: 38px; border-radius: var(--r2); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+.port-row-name { font-size: 0.85rem; font-weight: 700; color: var(--t1); }
+.port-row-sub { font-size: 0.65rem; color: var(--t3); margin-top: 1px; }
+.port-row-val { text-align: right; }
+.port-row-amt { font-size: 0.88rem; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; }
+.port-row-pnl { font-size: 0.68rem; font-weight: 700; margin-top: 2px; }
+
+.lot-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.74rem; }
+.lot-row:last-child { border-bottom: none; }
+.lot-del { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 0.8rem; padding: 3px 6px; border-radius: var(--r1); }
+.lot-del:hover { color: var(--red); background: var(--red-b); }
+
+/* ═══════════════════════════════════════════════════════
+   PROFILE
+═══════════════════════════════════════════════════════ */
+.profile-wrap { max-width: 640px; }
+.profile-hero {
+  display: flex; align-items: center; gap: 20px;
+  background: linear-gradient(135deg, var(--acc-dim), var(--acc-soft));
+  border: 1px solid hsla(var(--acc-h),78%,65%,0.18);
+  border-radius: var(--r5); padding: 22px 24px; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.profile-hero::before {
+  content: ''; position: absolute; top: -60px; right: -60px;
+  width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(var(--acc-glow), transparent 70%);
+  pointer-events: none;
+}
+.profile-av-big {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 32px;
+  background: var(--s2); border: 2.5px solid var(--border2);
+  flex-shrink: 0; position: relative; z-index: 1;
+  overflow: hidden; cursor: pointer;
+  box-shadow: 0 0 0 4px hsla(var(--acc-h),78%,65%,0.15);
+}
+.profile-av-big img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.profile-av-big .av-overlay {
+  position: absolute; inset: 0;
+  background: hsla(0,0%,0%,0.55);
+  display: none; place-items: center;
+  font-size: 0.6rem; color: #fff; text-align: center; border-radius: 50%;
+}
+.profile-av-big:hover .av-overlay { display: grid; }
+.profile-name { font-size: 1.15rem; font-weight: 900; color: var(--t1); letter-spacing: -0.02em; }
+.profile-email { font-size: 0.76rem; color: var(--t3); margin-top: 2px; }
+.profile-joined { font-size: 0.66rem; color: var(--t4); margin-top: 5px; }
+
+.ps-title {
+  font-size: 0.65rem; font-weight: 800; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--t3);
+  margin-bottom: 13px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.profile-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fg { margin-bottom: 0; }
+.fg.span2 { grid-column: 1 / -1; }
+.save-btn {
+  background: linear-gradient(135deg, var(--acc), var(--acc2));
+  color: #fff; border: none; border-radius: var(--r2);
+  padding: 10px 22px; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.16s ease;
+  box-shadow: 0 3px 14px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+}
+.save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+}
+
+.photo-upload-area {
+  border: 2px dashed var(--border);
+  border-radius: var(--r3); padding: 20px;
+  text-align: center; cursor: pointer;
+  transition: border-color 0.16s, background 0.16s; margin-bottom: 10px;
+}
+.photo-upload-area:hover { border-color: var(--acc); background: var(--acc-soft); }
+.photo-upload-area.drag { border-color: var(--acc); background: var(--acc-dim); }
+.photo-preview { width: 62px; height: 62px; border-radius: 50%; object-fit: cover; margin: 0 auto 8px; display: block; border: 2px solid var(--border2); }
+
+.twofa-setup { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r3); padding: 15px; }
+.twofa-status { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.twofa-badge { font-size: 0.63rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.twofa-on { background: var(--green-b); color: var(--green); }
+.twofa-off { background: var(--red-b); color: var(--red); }
+
+.export-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.export-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r3); padding: 16px; text-align: center;
+  cursor: pointer; transition: all 0.14s;
+}
+.export-card:hover { border-color: var(--border2); background: var(--s3); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.export-ico { font-size: 1.7rem; margin-bottom: 7px; }
+.export-name { font-size: 0.78rem; font-weight: 700; color: var(--t1); }
+.export-desc { font-size: 0.63rem; color: var(--t3); margin-top: 2px; }
+
+/* ═══════════════════════════════════════════════════════
+   MODALS
+═══════════════════════════════════════════════════════ */
+.overlay {
+  position: fixed; inset: 0;
+  background: hsla(228,20%,5%,0.80);
+  backdrop-filter: blur(6px);
+  display: grid; place-items: center;
+  z-index: 300; padding: 20px;
+  animation: fi 0.16s ease;
+}
+@keyframes fi { from { opacity:0 } to { opacity:1 } }
+
+.modal {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r5);
+  box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 400px; padding: 24px;
+  animation: su 0.22s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+}
+.modal::before {
+  content: ''; position: absolute; top: -1px; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, hsla(var(--acc-h),78%,65%,0.35), transparent);
+}
+@keyframes su { from { transform: translateY(16px) scale(0.97); opacity:0 } to { transform:none; opacity:1 } }
+
+.modal-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-title { font-size: 0.95rem; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
+.modal-close {
+  background: var(--s2); border: 1px solid var(--border);
+  color: var(--t2); width: 28px; height: 28px; border-radius: var(--r2);
+  cursor: pointer; font-size: 0.8rem; display: grid; place-items: center;
+  transition: color 0.12s, background 0.12s;
+}
+.modal-close:hover { color: var(--t1); background: var(--s3); }
+
+.type-tog {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px; background: var(--s2); border-radius: var(--r2);
+  padding: 3px; margin-bottom: 16px; border: 1px solid var(--border);
+}
+.type-btn {
+  border: none; border-radius: calc(var(--r2) - 2px);
+  background: none; color: var(--t3);
+  padding: 8px; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; transition: all 0.16s; font-family: inherit;
+}
+.type-btn.ti {
+  background: var(--green-b); color: var(--green);
+  box-shadow: 0 1px 4px hsla(0,0%,0%,0.25);
+}
+.type-btn.te {
+  background: var(--red-b); color: var(--red);
+  box-shadow: 0 1px 4px hsla(0,0%,0%,0.25);
+}
+
+.cat-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 5px; margin-bottom: 13px; }
+.cat-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 3px; border-radius: var(--r2);
+  background: var(--s2); border: 1px solid var(--border);
+  cursor: pointer; font-size: 0.54rem; color: var(--t3); font-weight: 600;
+  transition: all 0.13s; font-family: inherit;
+}
+.cat-btn .ce { font-size: 1.15rem; }
+.cat-btn:hover { border-color: var(--border2); color: var(--t2); background: var(--s3); }
+.cat-btn.cs {
+  border-color: var(--acc); background: var(--acc-dim);
+  color: hsl(var(--acc-h),78%,72%);
+}
+
+.bud-setup { display: flex; flex-direction: column; gap: 9px; max-height: 300px; overflow-y: auto; margin-bottom: 14px; }
+.bsr { display: flex; align-items: center; gap: 9px; }
+.bsr-ico { font-size: 1rem; width: 22px; text-align: center; flex-shrink: 0; }
+.bsr-name { font-size: 0.77rem; font-weight: 600; color: var(--t1); flex: 1; }
+.bsr-input {
+  width: 92px; background: var(--s2); border: 1px solid var(--border);
+  color: var(--t1); border-radius: var(--r1); padding: 5px 9px;
+  font-size: 0.77rem; font-family: inherit; outline: none;
+  text-align: right; transition: border-color 0.14s;
+}
+.bsr-input:focus { border-color: var(--acc); }
+.bsr-cur { font-size: 0.66rem; color: var(--t3); flex-shrink: 0; }
+.divider { height: 1px; background: var(--border); margin: 13px 0; }
+
+/* ═══════════════════════════════════════════════════════
+   FAB + TOAST + EMPTY
+═══════════════════════════════════════════════════════ */
+.fab {
+  position: fixed; bottom: 22px; right: 22px;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--acc), hsl(calc(var(--acc-h) + 20),78%,68%));
+  color: #fff; border: none; cursor: pointer;
+  font-size: 1.35rem; display: grid; place-items: center;
+  box-shadow: 0 4px 20px var(--acc-glow), 0 0 0 1px hsla(var(--acc-h),78%,65%,0.25);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  z-index: 50;
+}
+.fab:hover {
+  transform: scale(1.1) rotate(45deg);
+  box-shadow: 0 8px 28px var(--acc-glow), 0 0 0 1px hsla(var(--acc-h),78%,65%,0.3);
+}
+.fab:active { transform: scale(0.95); }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--s1); border: 1px solid var(--green-br);
+  color: var(--green); border-radius: var(--r3);
+  padding: 10px 18px; font-size: 0.8rem; font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  opacity: 0; transition: all 0.24s ease;
+  z-index: 500; display: flex; align-items: center; gap: 7px;
+  pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: var(--red-br); color: var(--red); }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 44px 0; gap: 9px;
+}
+.empty-ico { font-size: 2.4rem; filter: grayscale(1) opacity(0.28); }
+.empty-t { font-size: 0.82rem; font-weight: 700; color: var(--t3); }
+.empty-s { font-size: 0.71rem; color: var(--t3); text-align: center; line-height: 1.55; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  .stats { grid-template-columns: repeat(2,1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .ana-grid { grid-template-columns: 1fr; }
+  .mkt-summary { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 620px) {
+  .stats { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; left: -100%; transition: left 0.26s ease; z-index: 100; height: 100vh; }
+  .sidebar.open { left: 0; box-shadow: var(--shadow-lg); }
+  .profile-form-grid { grid-template-columns: 1fr; }
+  .export-grid { grid-template-columns: 1fr 1fr; }
+  .content { padding: 16px; }
+  .topbar { padding: 0 16px; }
+}
+</style>
+
+</head>
+<body>
+
+<!-- ══════════ AUTH SCREEN ══════════ -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">💸</div>
+      <div>
+        <div class="auth-logo-name">FinFlow</div>
+        <div class="auth-logo-sub">Личные финансы</div>
+      </div>
+    </div>
+    <div class="auth-card">
+      <!-- TAB BAR -->
+      <div class="auth-tabs" id="auth-tabs-bar">
+        <button class="auth-tab on" id="tab-login" onclick="switchTab('login')">Войти</button>
+        <button class="auth-tab" id="tab-reg" onclick="switchTab('reg')">Регистрация</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="form-login">
+        <div class="auth-title">С возвращением 👋</div>
+        <div class="auth-sub">Войди в свой аккаунт FinFlow</div>
+        <div class="fgroup">
+          <label class="flbl">Email</label>
+          <div class="input-wrap"><span class="iico">✉</span>
+            <input class="finput" type="email" id="l-email" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+          <div class="ferr" id="l-email-err"><span>⚠</span><span></span></div>
+        </div>
+        <div class="fgroup">
+          <label class="flbl">Пароль</label>
+          <div class="input-wrap"><span class="iico">🔒</span>
+            <input class="finput" type="password" id="l-pass" placeholder="••••••••" style="padding-right:36px" autocomplete="current-password"/>
+            <button class="eye-btn" type="button" onclick="toggleEye('l-pass',this)">👁</button>
+          </div>
+          <div class="ferr" id="l-pass-err"><span>⚠</span><span></span></div>
+        </div>
+        <div class="ferr" id="l-general-err" style="margin-bottom:9px;font-size:.73rem"><span>⚠</span><span></span></div>
+        <button class="btn-auth" onclick="doLogin()">Войти в аккаунт</button>
+        <div class="auth-footer">Нет аккаунта? <span class="auth-link" onclick="switchTab('reg')">Зарегистрироваться</span></div>
+      </div>
+
+      <!-- REGISTER -->
+      <div id="form-reg" style="display:none">
+        <div class="auth-title">Создать аккаунт</div>
+        <div class="auth-sub">Займёт меньше минуты</div>
+        <div class="fgroup">
+          <label class="flbl">Аватар</label>
+          <div class="av-pick" id="av-pick-reg"></div>
+        </div>
+        <div class="form-row2">
+          <div class="fgroup">
+            <label class="flbl">Имя</label>
+            <input class="finput" type="text" id="r-name" placeholder="Иван" autocomplete="given-name"/>
+            <div class="ferr" id="r-name-err"><span>⚠</span><span></span></div>
+          </div>
+          <div class="fgroup">
+            <label class="flbl">Фамилия</label>
+            <input class="finput" type="text" id="r-surname" placeholder="Иванов"/>
+          </div>
+        </div>
+        <div class="fgroup">
+          <label class="flbl">Email</label>
+          <div class="input-wrap"><span class="iico">✉</span>
+            <input class="finput" type="email" id="r-email" placeholder="you@example.com" autocomplete="email"/>
+          </div>
+          <div class="ferr" id="r-email-err"><span>⚠</span><span></span></div>
+        </div>
+        <div class="fgroup">
+          <label class="flbl">Пароль</label>
+          <div class="input-wrap"><span class="iico">🔒</span>
+            <input class="finput" type="password" id="r-pass" placeholder="Минимум 6 символов" oninput="checkStr(this.value,'r-sf','r-sl')" style="padding-right:36px" autocomplete="new-password"/>
+            <button class="eye-btn" type="button" onclick="toggleEye('r-pass',this)">👁</button>
+          </div>
+          <div class="strength-bar"><div class="strength-fill" id="r-sf" style="width:0"></div></div>
+          <div class="strength-lbl" id="r-sl"></div>
+          <div class="ferr" id="r-pass-err"><span>⚠</span><span></span></div>
+        </div>
+        <div class="ferr" id="r-general-err" style="margin-bottom:9px;font-size:.73rem"><span>⚠</span><span></span></div>
+        <button class="btn-auth" onclick="doRegister()">Создать аккаунт</button>
+        <div class="auth-footer">Есть аккаунт? <span class="auth-link" onclick="switchTab('login')">Войти</span></div>
+      </div>
+
+      <!-- 2FA step -->
+      <div id="form-2fa" style="display:none">
+        <div class="auth-title" style="text-align:center">Двухфакторная<br>аутентификация</div>
+        <div class="auth-sub" style="text-align:center;margin-top:6px">Введи 6-значный код из приложения</div>
+        <div class="twofa-digits" id="twofa-input-digits">
+          <input class="twofa-digit" maxlength="1" id="td0" oninput="tdInput(0)" onkeydown="tdKey(event,0)"/>
+          <input class="twofa-digit" maxlength="1" id="td1" oninput="tdInput(1)" onkeydown="tdKey(event,1)"/>
+          <input class="twofa-digit" maxlength="1" id="td2" oninput="tdInput(2)" onkeydown="tdKey(event,2)"/>
+          <input class="twofa-digit" maxlength="1" id="td3" oninput="tdInput(3)" onkeydown="tdKey(event,3)"/>
+          <input class="twofa-digit" maxlength="1" id="td4" oninput="tdInput(4)" onkeydown="tdKey(event,4)"/>
+          <input class="twofa-digit" maxlength="1" id="td5" oninput="tdInput(5)" onkeydown="tdKey(event,5)"/>
+        </div>
+        <div class="ferr" id="twofa-err" style="justify-content:center;margin-bottom:10px"><span>⚠</span><span></span></div>
+        <button class="btn-auth" onclick="verify2FA()">Подтвердить</button>
+        <div class="auth-footer"><span class="auth-link" onclick="cancel2FA()">← Назад</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APP SCREEN ══════════ -->
+<div id="app-screen">
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-icon">💸</div>
+      <div>
+        <div class="logo-name">FinFlow</div>
+        <div class="logo-tag">v2.0</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-lbl">Главное</div>
+      <button class="nav-btn on" data-page="dashboard" onclick="goPage('dashboard')"><span class="nav-ico">◈</span>Дашборд</button>
+      <button class="nav-btn" data-page="transactions" onclick="goPage('transactions')"><span class="nav-ico">↕</span>Транзакции<span class="nav-badge" id="tx-badge" style="display:none">0</span></button>
+      <button class="nav-btn" data-page="budgets" onclick="goPage('budgets')"><span class="nav-ico">◎</span>Бюджеты</button>
+      <button class="nav-btn" data-page="analytics" onclick="goPage('analytics')"><span class="nav-ico">▣</span>Аналитика</button>
+      <div class="nav-lbl">Рынки</div>
+      <button class="nav-btn" data-page="portfolio" onclick="goPage('portfolio')"><span class="nav-ico">💼</span>Портфель</button>
+      <button class="nav-btn" data-page="markets" onclick="goPage('markets')"><span class="nav-ico">📈</span>Рынки</button>
+      <button class="nav-btn" data-page="crypto" onclick="goPage('crypto')"><span class="nav-ico">₿</span>Криптовалюты</button>
+      <div class="nav-lbl">Аккаунт</div>
+      <button class="nav-btn" data-page="profile" onclick="goPage('profile')"><span class="nav-ico">👤</span>Профиль</button>
+    </nav>
+    <div id="sidebar-user-wrap"></div>
+    <div class="sidebar-foot">
+      <div class="nav-lbl" style="padding:0 7px 4px">Период</div>
+      <div class="month-row">
+        <button class="mbtn" onclick="changeMonth(-1)">‹</button>
+        <span class="mlbl" id="month-lbl">—</span>
+        <button class="mbtn" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-l">
+        <span class="topbar-title" id="page-title">Дашборд</span>
+        <span class="topbar-month" id="topbar-month"></span>
+      </div>
+      <div class="topbar-r">
+        <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Сменить тему">🌙</button>
+        <button class="btn btn-ghost" id="budget-topbtn" onclick="openBudgetModal()" style="display:none">⚙ Бюджеты</button>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Добавить</button>
+        <div style="position:relative">
+          <div class="acct-btn" id="acct-btn" onclick="toggleDD()">
+            <div class="acct-av" id="acct-av-top">😊</div>
+            <div style="display:flex;flex-direction:column;line-height:1.2">
+              <span class="acct-name" id="acct-name-top">—</span>
+              <span class="acct-role">Личный аккаунт</span>
+            </div>
+            <span class="acct-arr">▼</span>
+          </div>
+          <div class="acct-dd" id="acct-dd">
+            <div class="dd-hdr">
+              <div class="dd-av" id="dd-av">😊</div>
+              <div class="dd-name" id="dd-name">—</div>
+              <div class="dd-email" id="dd-email">—</div>
+              <div class="dd-joined" id="dd-joined">—</div>
+            </div>
+            <div class="dd-body">
+              <button class="dd-item" onclick="goPage('profile');closeDD()"><span class="dd-item-ico">👤</span>Профиль</button>
+              <button class="dd-item" onclick="goPage('markets');closeDD()"><span class="dd-item-ico">📈</span>Рынки</button>
+              <button class="dd-item" onclick="goPage('crypto');closeDD()"><span class="dd-item-ico">₿</span>Крипто</button>
+              <button class="dd-item" onclick="toggleTheme();closeDD()"><span class="dd-item-ico" id="dd-theme-ico">🌙</span><span id="dd-theme-txt">Светлая тема</span></button>
+              <div class="dd-sep"></div>
+              <button class="dd-item danger" onclick="doLogout()"><span class="dd-item-ico">🚪</span>Выйти</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="overlay" id="add-modal" style="display:none" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <div class="modal-hd"><span class="modal-title">Новая запись</span><button class="modal-close" onclick="closeAddModal()">✕</button></div>
+    <div class="type-tog">
+      <button class="type-btn ti" id="btn-income" onclick="setType('income')">↑ Доход</button>
+      <button class="type-btn" id="btn-expense" onclick="setType('expense')">↓ Расход</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px">
+      <div><label class="flbl">Сумма <span id="f-amount-cur">₽</span></label><input class="finput" type="number" id="f-amount" min="0.01" step="any" placeholder="0"/></div>
+      <div><label class="flbl">Дата</label><input class="finput" type="date" id="f-date"/></div>
+    </div>
+    <div style="margin-bottom:11px"><label class="flbl">Категория</label><div class="cat-grid" id="cat-grid"></div></div>
+    <div style="margin-bottom:13px"><label class="flbl">Заметка</label><input class="finput" type="text" id="f-note" placeholder="Необязательно..." maxlength="80"/></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;font-size:.83rem" onclick="submitTx()">Добавить запись</button>
+  </div>
+</div>
+
+<!-- BUDGET MODAL -->
+<div class="overlay" id="bud-modal" style="display:none" onclick="if(event.target===this)closeBudgetModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><span class="modal-title">Бюджеты по категориям</span><button class="modal-close" onclick="closeBudgetModal()">✕</button></div>
+    <p style="font-size:.71rem;color:var(--t3);margin-bottom:13px">Лимиты расходов на месяц.</p>
+    <div class="bud-setup" id="bud-setup"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px" onclick="saveBudgets()">Сохранить</button>
+  </div>
+</div>
+
+<!-- ASSET DETAIL MODAL -->
+<div class="overlay" id="asset-modal" style="display:none" onclick="if(event.target===this)closeAssetModal()">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hd"><span class="modal-title" id="asset-modal-title">Актив</span><button class="modal-close" onclick="closeAssetModal()">✕</button></div>
+    <div id="asset-modal-body"></div>
+  </div>
+</div>
+
+<!-- HOLDING (PORTFOLIO) MODAL -->
+<div class="overlay" id="holding-modal" style="display:none" onclick="if(event.target===this)closeHoldingModal()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hd"><span class="modal-title">Портфель</span><button class="modal-close" onclick="closeHoldingModal()">✕</button></div>
+    <div id="holding-modal-body"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD SETTINGS MODAL -->
+<div class="overlay" id="dash-modal" style="display:none" onclick="if(event.target===this)closeDashSettings()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><span class="modal-title">Настроить дашборд</span><button class="modal-close" onclick="closeDashSettings()">✕</button></div>
+    <p style="font-size:.71rem;color:var(--t3);margin-bottom:12px">Отметь, какие блоки показывать, и стрелками задай порядок.</p>
+    <div id="dash-widget-list"></div>
+  </div>
+</div>
+
+<!-- 2FA SETUP MODAL -->
+<div class="overlay" id="twofa-modal" style="display:none" onclick="if(event.target===this)closeTwofaModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><span class="modal-title">Двухфакторная аутентификация</span><button class="modal-close" onclick="closeTwofaModal()">✕</button></div>
+    <div id="twofa-modal-body"></div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAddModal()" title="Добавить">+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════ */
+const CATS=[
+  {id:'food',l:'Еда',e:'🍔',c:'#f59e0b'},{id:'transport',l:'Транспорт',e:'🚌',c:'#3b82f6'},
+  {id:'housing',l:'Жильё',e:'🏠',c:'#8b5cf6'},{id:'health',l:'Здоровье',e:'💊',c:'#10b981'},
+  {id:'fun',l:'Развлечения',e:'🎮',c:'#ec4899'},{id:'shopping',l:'Покупки',e:'🛍️',c:'#f97316'},
+  {id:'education',l:'Обучение',e:'📚',c:'#06b6d4'},{id:'cafe',l:'Кафе',e:'☕',c:'#a78bfa'},
+  {id:'sport',l:'Спорт',e:'🏋️',c:'#34d399'},{id:'salary',l:'Зарплата',e:'💼',c:'#22c55e'},
+  {id:'freelance',l:'Фриланс',e:'💻',c:'#a3e635'},{id:'invest',l:'Инвестиции',e:'📈',c:'#67e8f9'},
+  {id:'other',l:'Другое',e:'📦',c:'#94a3b8'},
+];
+const INC=['salary','freelance','invest','other'];
+const EXP_CATS=CATS.filter(c=>!INC.includes(c.id));
+const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MONTHS_S=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+const AVATARS=['😊','🦊','🐻','🐼','🦁','🐯','🦋','🌟','🚀','🎯','💎','🌈'];
+
+function getCat(id){return CATS.find(c=>c.id===id)||CATS[CATS.length-1]}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+
+/* ═══════════════════════════════════════════
+   API-СЛОЙ  (backend: тот же домен, /api/*)
+   Данные больше не в localStorage — они в БД на сервере.
+   В localStorage остаётся только: access-токен, тема до входа,
+   кэш курсов валют, кэш истории цен, фото профиля (по email).
+═══════════════════════════════════════════ */
+const API_BASE='';                 // тот же origin, что и страница
+let accessToken=localStorage.getItem('ff_at')||null;
+let loginTempToken=null;           // промежуточный токен между шагом пароля и 2FA
+
+function setAccessToken(t){
+  accessToken=t||null;
+  if(t)localStorage.setItem('ff_at',t);else localStorage.removeItem('ff_at');
+}
+
+/* Обёртка над fetch: подставляет Bearer-токен, парсит JSON, кидает Error с .status.
+   На 401 один раз пробует обновить токен по refresh-cookie и повторить запрос. */
+async function api(path,opts={}){
+  const {method='GET',body,auth=true,retry=true}=opts;
+  const headers={};
+  if(body!==undefined)headers['Content-Type']='application/json';
+  if(auth&&accessToken)headers['Authorization']='Bearer '+accessToken;
+  const res=await fetch(API_BASE+path,{
+    method,headers,
+    body:body!==undefined?JSON.stringify(body):undefined,
+    credentials:'same-origin',
+  });
+  if(res.status===401&&auth&&retry){
+    if(await tryRefresh())return api(path,{...opts,retry:false});
+  }
+  const txt=await res.text();
+  let data=null;
+  try{data=txt?JSON.parse(txt):null}catch{data=txt}
+  if(!res.ok){
+    const err=new Error((data&&data.error)||('HTTP '+res.status));
+    err.status=res.status;err.data=data;throw err;
+  }
+  return data;
+}
+
+async function tryRefresh(){
+  try{
+    const res=await fetch(API_BASE+'/api/auth/refresh',{method:'POST',credentials:'same-origin'});
+    if(!res.ok)return false;
+    const j=await res.json();
+    if(j&&j.accessToken){
+      setAccessToken(j.accessToken);
+      if(j.user)currentUser=mapUser(j.user);
+      return true;
+    }
+    return false;
+  }catch{return false}
+}
+
+/* API-модель пользователя → модель, которую ждёт фронтенд.
+   Фото профиля сервер не хранит (нет файлового хранилища) — держим его
+   локально, привязанным к email. */
+function mapUser(u){
+  return {
+    id:u.id,
+    email:u.email,
+    name:u.name||'',
+    surname:u.surname||'',
+    avatar:u.avatar||AVATARS[0],
+    photo:localStorage.getItem('ff_photo_'+u.email)||null,
+    currency:u.currency||'RUB',
+    theme:u.theme||'dark',
+    accentHue:(u.accentHue!=null?u.accentHue:252),
+    dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
+    twofa:!!u.twofa,
+    joinedAt:u.createdAt||new Date().toISOString(),
+  };
+}
+/* API-холдинг портфеля → фронтенд ждёт поле `e` вместо `icon` */
+function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
+
+/* ── in-memory кэш данных текущего пользователя ── */
+const store={tx:[],budgets:{},portfolio:[]};
+
+async function loadAllData(){
+  const [txR,budR,portR]=await Promise.all([
+    api('/api/transactions'),
+    api('/api/budgets'),
+    api('/api/portfolio'),
+  ]);
+  store.tx=txR.transactions||[];
+  store.budgets=budR.budgets||{};
+  store.portfolio=(portR.holdings||[]).map(mapHolding);
+}
+async function reloadPortfolio(){
+  const r=await api('/api/portfolio');
+  store.portfolio=(r.holdings||[]).map(mapHolding);
+}
+
+/* PATCH /api/me без ожидания — поле уже изменено локально, сервер догоняет.
+   Ошибку показываем тостом, но UI не откатываем. */
+function pushMe(fields){
+  return api('/api/me',{method:'PATCH',body:fields}).catch(()=>showToast('⚠ Изменение не сохранено на сервере',true));
+}
+/* ═══════════════════════════════════════════
+   МУЛЬТИВАЛЮТНОСТЬ
+   Базовая валюта хранится в профиле пользователя.
+   Курсы (относительно USD) берутся с open.er-api.com — бесплатно, без ключа,
+   обновляются раз в сутки, кэшируются в localStorage на 12 часов.
+═══════════════════════════════════════════ */
+const CURR_LIST=[
+  {code:'RUB',sym:'₽',name:'Российский рубль'},
+  {code:'USD',sym:'$',name:'Доллар США'},
+  {code:'EUR',sym:'€',name:'Евро'},
+  {code:'GBP',sym:'£',name:'Фунт стерлингов'},
+  {code:'CNY',sym:'¥',name:'Китайский юань'},
+  {code:'JPY',sym:'¥',name:'Японская иена'},
+  {code:'KZT',sym:'₸',name:'Казахстанский тенге'},
+  {code:'TRY',sym:'₺',name:'Турецкая лира'},
+  {code:'AED',sym:'د.إ',name:'Дирхам ОАЭ'},
+  {code:'UAH',sym:'₴',name:'Украинская гривна'},
+  {code:'BYN',sym:'Br',name:'Белорусский рубль'},
+  {code:'GEL',sym:'₾',name:'Грузинский лари'},
+  {code:'AMD',sym:'֏',name:'Армянский драм'},
+];
+let baseCurrency='RUB',fxRates=null,fxRatesTs=0;
+function currInfo(){return CURR_LIST.find(c=>c.code===baseCurrency)||CURR_LIST[0]}
+function curSym(code){const c=CURR_LIST.find(x=>x.code===(code||baseCurrency));return c?c.sym:(code||'')}
+async function ensureFxRates(force){
+  const cached=ld('ff_fx_rates',null);
+  if(!force&&cached&&Date.now()-cached.ts<12*3600000){fxRates=cached.rates;fxRatesTs=cached.ts;return fxRates}
+  try{
+    const d=await fetchJSON('https://open.er-api.com/v6/latest/USD');
+    if(d.rates){fxRates=d.rates;fxRatesTs=Date.now();sv('ff_fx_rates',{rates:fxRates,ts:fxRatesTs})}
+  }catch(e){if(cached){fxRates=cached.rates;fxRatesTs=cached.ts}}
+  return fxRates;
+}
+/* сколько единиц `to` за 1 единицу `from` (обе — коды из CURR_LIST/мажорных валют) */
+function crossRate(from,to){
+  if(from===to)return 1;
+  if(!fxRates)return 1;
+  const f=fxRates[from],t=fxRates[to];
+  if(!f||!t)return 1;
+  return t/f;
+}
+function usdTo(code,amountUsd){return fxRates?amountUsd*(fxRates[code]||1):amountUsd}
+function convertAmount(amount,fromCode,toCode){return crossRate(fromCode,toCode)*amount}
+
+/* ═══════════════════════════════════════════
+   ФОРМАТИРОВАНИЕ ЧИСЕЛ
+═══════════════════════════════════════════ */
+function fmtNum(n){return Math.abs(n).toLocaleString('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:0})}
+function fmt(n,sign=false){
+  const pfx=sign?(n>=0?'+':'−'):(n<0?'−':'');
+  return pfx+fmtNum(n)+' '+currInfo().sym;
+}
+function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')??d}catch{return d}}
+function sv(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0}return h.toString(36)}
+
+/* ═══════════════════════════════════════════
+   THEME
+═══════════════════════════════════════════ */
+let isDark=ld('ff_theme','dark')==='dark';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+  const btn=document.getElementById('theme-btn');
+  if(btn)btn.textContent=isDark?'🌙':'☀️';
+  const ico=document.getElementById('dd-theme-ico');
+  const txt=document.getElementById('dd-theme-txt');
+  if(ico)ico.textContent=isDark?'☀️':'🌙';
+  if(txt)txt.textContent=isDark?'Светлая тема':'Тёмная тема';
+}
+function toggleTheme(){
+  isDark=!isDark;sv('ff_theme',isDark?'dark':'light');
+  if(currentUser){currentUser.theme=isDark?'dark':'light';pushMe({theme:currentUser.theme})}
+  applyTheme();
+}
+const ACCENT_PRESETS=[
+  {hue:252,name:'Фиолетовый'},{hue:210,name:'Синий'},{hue:190,name:'Бирюзовый'},
+  {hue:150,name:'Зелёный'},{hue:330,name:'Розовый'},{hue:20,name:'Оранжевый'},
+  {hue:0,name:'Красный'},{hue:45,name:'Жёлтый'},
+];
+function applyAccent(hue){document.documentElement.style.setProperty('--acc-h',hue)}
+function setAccent(hue){
+  applyAccent(hue);
+  if(currentUser){currentUser.accentHue=hue;pushMe({accentHue:hue})}
+  if(curPage==='profile')render();
+}
+applyTheme();
+
+/* ═══════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════ */
+let currentUser=null,selAvatar=AVATARS[0],regAvatar=AVATARS[0],loginEmail='';
+
+// build avatar pickers
+(function(){
+  const w=document.getElementById('av-pick-reg');
+  AVATARS.forEach((av,i)=>{
+    const b=document.createElement('button');b.type='button';
+    b.className='av-opt'+(i===0?' sel':'');b.textContent=av;
+    b.onclick=()=>{document.querySelectorAll('#av-pick-reg .av-opt').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');regAvatar=av};
+    w.appendChild(b);
+  });
+})();
+
+function switchTab(t){
+  document.getElementById('tab-login').classList.toggle('on',t==='login');
+  document.getElementById('tab-reg').classList.toggle('on',t==='reg');
+  document.getElementById('form-login').style.display=t==='login'?'':'none';
+  document.getElementById('form-reg').style.display=t==='reg'?'':'none';
+  document.getElementById('form-2fa').style.display='none';
+  clearAuthErrors();
+}
+function clearAuthErrors(){
+  document.querySelectorAll('.ferr').forEach(e=>e.classList.remove('show'));
+  document.querySelectorAll('.finput').forEach(e=>{e.classList.remove('err')});
+}
+function showErr(id,msg){
+  const el=document.getElementById(id);if(!el)return;
+  el.querySelector('span:last-child').textContent=msg;el.classList.add('show');
+}
+function toggleEye(id,btn){
+  const i=document.getElementById(id);i.type=i.type==='password'?'text':'password';btn.textContent=i.type==='password'?'👁':'🙈';
+}
+function checkStr(pw,fid,lid){
+  const fill=document.getElementById(fid),lbl=document.getElementById(lid);if(!fill)return;
+  if(!pw){fill.style.width='0';if(lbl)lbl.textContent='';return}
+  let sc=0;if(pw.length>=6)sc++;if(pw.length>=10)sc++;if(/[A-Z]/.test(pw))sc++;if(/[0-9]/.test(pw))sc++;if(/[^a-zA-Z0-9]/.test(pw))sc++;
+  const lvl=[['20%','var(--red)','Очень слабый'],['40%','var(--red)','Слабый'],['60%','var(--yellow)','Средний'],['80%','var(--blue)','Хороший'],['100%','var(--green)','Надёжный']];
+  const l=lvl[Math.min(sc-1,4)]||lvl[0];
+  fill.style.width=l[0];fill.style.background=l[1];
+  if(lbl){lbl.textContent=l[2];lbl.style.color=l[1]}
+}
+
+async function doRegister(){
+  clearAuthErrors();
+  const name=document.getElementById('r-name').value.trim();
+  const email=document.getElementById('r-email').value.trim().toLowerCase();
+  const pass=document.getElementById('r-pass').value;
+  const surname=document.getElementById('r-surname').value.trim();
+  let ok=true;
+  if(!name){showErr('r-name-err','Введи имя');ok=false}
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showErr('r-email-err','Введи корректный email');ok=false}
+  if(pass.length<6){showErr('r-pass-err','Минимум 6 символов');ok=false}
+  if(!ok)return;
+  const btn=document.querySelector('#form-reg .btn-auth');if(btn)btn.disabled=true;
+  try{
+    const r=await api('/api/auth/register',{method:'POST',auth:false,body:{email,password:pass,name,surname:surname||undefined}});
+    setAccessToken(r.accessToken);
+    currentUser=mapUser(r.user);
+    if(regAvatar&&regAvatar!==currentUser.avatar){currentUser.avatar=regAvatar;pushMe({avatar:regAvatar})}
+    await enterApp();
+  }catch(e){
+    showErr('r-general-err',e.status===409?'Аккаунт с таким email уже существует':(e.message||'Не удалось зарегистрироваться'));
+  }finally{if(btn)btn.disabled=false}
+}
+
+async function doLogin(){
+  clearAuthErrors();
+  const email=document.getElementById('l-email').value.trim().toLowerCase();
+  const pass=document.getElementById('l-pass').value;
+  let ok=true;
+  if(!email){showErr('l-email-err','Введи email');ok=false}
+  if(!pass){showErr('l-pass-err','Введи пароль');ok=false}
+  if(!ok)return;
+  const btn=document.querySelector('#form-login .btn-auth');if(btn)btn.disabled=true;
+  try{
+    const r=await api('/api/auth/login',{method:'POST',auth:false,body:{email,password:pass}});
+    if(r.requires2FA){loginTempToken=r.tempToken;loginEmail=email;show2FAStep();return}
+    setAccessToken(r.accessToken);
+    currentUser=mapUser(r.user);
+    await enterApp();
+  }catch(e){
+    showErr('l-general-err',e.status===401?'Неверный email или пароль':(e.message||'Не удалось войти'));
+  }finally{if(btn)btn.disabled=false}
+}
+
+/* ── 2FA ── */
+function show2FAStep(){
+  document.getElementById('form-login').style.display='none';
+  document.getElementById('auth-tabs-bar').style.display='none';
+  document.getElementById('form-2fa').style.display='';
+  document.getElementById('td0').focus();
+}
+function cancel2FA(){
+  loginEmail='';
+  document.getElementById('form-2fa').style.display='none';
+  document.getElementById('auth-tabs-bar').style.display='';
+  document.getElementById('form-login').style.display='';
+}
+function tdInput(i){
+  const v=document.getElementById('td'+i).value.replace(/\D/,'');
+  document.getElementById('td'+i).value=v;
+  if(v&&i<5)document.getElementById('td'+(i+1)).focus();
+  if(i===5&&v)verify2FA();
+}
+function tdKey(e,i){if(e.key==='Backspace'&&!document.getElementById('td'+i).value&&i>0)document.getElementById('td'+(i-1)).focus()}
+function get2FACode(){return[0,1,2,3,4,5].map(i=>document.getElementById('td'+i).value).join('')}
+async function verify2FA(){
+  const code=get2FACode();if(code.length<6)return;
+  const err=document.getElementById('twofa-err');
+  try{
+    const r=await api('/api/auth/2fa/verify',{method:'POST',auth:false,body:{tempToken:loginTempToken,code}});
+    setAccessToken(r.accessToken);
+    loginTempToken=null;
+    currentUser=mapUser(r.user);
+    await enterApp();
+  }catch(e){
+    err.querySelector('span:last-child').textContent=e.status===401?'Неверный код':(e.message||'Ошибка проверки');
+    err.classList.add('show');
+    [0,1,2,3,4,5].forEach(i=>{const d=document.getElementById('td'+i);d.value='';d.classList.add('err')});
+    document.getElementById('td0').focus();
+  }
+}
+
+async function doLogout(){
+  try{await api('/api/auth/logout',{method:'POST',auth:false})}catch{}
+  setAccessToken(null);loginTempToken=null;
+  currentUser=null;store.tx=[];store.budgets={};store.portfolio=[];
+  applyAccent(252);closeDD();
+  clearInterval(twofaTimerInterval);
+  document.getElementById('app-screen').classList.remove('show');
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  switchTab('login');
+}
+
+/* ═══════════════════════════════════════════
+   ENTER APP
+═══════════════════════════════════════════ */
+async function enterApp(){
+  document.getElementById('auth-screen').style.display='none';
+  const app=document.getElementById('app-screen');app.style.display='flex';app.classList.add('show');
+  baseCurrency=currentUser.currency||'RUB';
+  isDark=(currentUser.theme||'dark')==='dark';applyTheme();
+  applyAccent(currentUser.accentHue||252);
+  ensureFxRates().then(()=>{if(curPage==='markets'||curPage==='crypto'||curPage==='portfolio')render()});
+  updateAccountUI();updateMonthLabel();
+  const content=document.getElementById('content');
+  if(content)content.innerHTML='<div class="empty" style="padding:60px 0"><div class="empty-ico">⏳</div><div class="empty-t">Загрузка данных…</div></div>';
+  try{
+    await loadAllData();
+  }catch(e){
+    showToast('⚠ Не удалось загрузить данные: '+(e.message||e),true);
+  }
+  goPage('dashboard');
+}
+function avatarHTML(user,size='emoji'){
+  if(user.photo)return`<img src="${user.photo}" alt="av"/>`;
+  return user.avatar||'😊';
+}
+function updateAccountUI(){
+  if(!currentUser)return;
+  const u=currentUser;
+  const short=u.name||(u.email.split('@')[0]);
+  const full=u.name+(u.surname?' '+u.surname:'');
+  // topbar
+  const avTop=document.getElementById('acct-av-top');
+  if(u.photo)avTop.innerHTML=`<img src="${u.photo}" alt="av"/>`;else avTop.textContent=u.avatar||'😊';
+  document.getElementById('acct-name-top').textContent=short;
+  // dropdown
+  const ddAv=document.getElementById('dd-av');
+  if(u.photo)ddAv.innerHTML=`<img src="${u.photo}" alt="av"/>`;else ddAv.textContent=u.avatar||'😊';
+  document.getElementById('dd-name').textContent=full;
+  document.getElementById('dd-email').textContent=u.email;
+  const j=new Date(u.joinedAt);
+  document.getElementById('dd-joined').textContent='📅 С '+j.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  // sidebar
+  document.getElementById('sidebar-user-wrap').innerHTML=`
+    <div class="sidebar-user" onclick="goPage('profile')">
+      <div class="su-av">${u.photo?`<img src="${u.photo}" alt="av"/>`:u.avatar||'😊'}</div>
+      <div style="flex:1;min-width:0"><div class="su-name">${short}</div><div class="su-email">${u.email}</div></div>
+      <span style="font-size:.7rem;color:var(--t3)">›</span>
+    </div>`;
+}
+
+/* ── DROPDOWN ── */
+function toggleDD(){const dd=document.getElementById('acct-dd');const btn=document.getElementById('acct-btn');const o=dd.classList.contains('open');dd.classList.toggle('open',!o);btn.classList.toggle('open',!o)}
+function closeDD(){document.getElementById('acct-dd').classList.remove('open');document.getElementById('acct-btn').classList.remove('open')}
+document.addEventListener('click',e=>{if(!e.target.closest('#acct-btn')&&!e.target.closest('#acct-dd'))closeDD()});
+
+/* ═══════════════════════════════════════════
+   USER DATA
+═══════════════════════════════════════════ */
+/* Данные читаются из in-memory кэша store (наполняется в loadAllData при входе).
+   Запись идёт напрямую в API соответствующими операциями ниже. */
+function getTx(){return store.tx}
+function getBudgets(){return store.budgets}
+
+/* ═══════════════════════════════════════════
+   APP STATE
+═══════════════════════════════════════════ */
+let curPage='dashboard',viewMonth=new Date().getMonth(),viewYear=new Date().getFullYear();
+let addType='income',addCat='salary',filterCat=null,filterType='all';
+let mktTab='metals',cryptoData=[],metalsData=[],mktLoading=false;
+
+function monthTx(){return getTx().filter(t=>{const d=new Date(t.date);return d.getMonth()===viewMonth&&d.getFullYear()===viewYear})}
+function tInc(txs){return txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)}
+function tExp(txs){return txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)}
+
+/* ═══════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════ */
+function goPage(p){
+  curPage=p;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',budgets:'Бюджеты',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль'};
+  document.getElementById('page-title').textContent=titles[p]||p;
+  document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
+  filterCat=null;filterType='all';render();
+}
+function changeMonth(d){viewMonth+=d;if(viewMonth<0){viewMonth=11;viewYear--}if(viewMonth>11){viewMonth=0;viewYear++}updateMonthLabel();render()}
+function updateMonthLabel(){document.getElementById('month-lbl').textContent=MONTHS_S[viewMonth]+' '+viewYear;document.getElementById('topbar-month').textContent=MONTHS[viewMonth]+' '+viewYear}
+
+/* ═══════════════════════════════════════════
+   RENDER ROUTER
+═══════════════════════════════════════════ */
+function render(){
+  const tx=monthTx();const inc=tInc(tx),exp=tExp(tx),bal=inc-exp;
+  const badge=document.getElementById('tx-badge');badge.textContent=tx.length;badge.style.display=tx.length?'':'none';
+  const el=document.getElementById('content');
+  if(curPage==='dashboard'){el.innerHTML=renderDash(tx,inc,exp,bal);drawArea(tx);drawPie(tx)}
+  else if(curPage==='transactions')el.innerHTML=renderTx(tx);
+  else if(curPage==='budgets')el.innerHTML=renderBudgets(tx);
+  else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
+  else if(curPage==='portfolio')renderPortfolio(el);
+  else if(curPage==='markets')renderMarkets(el);
+  else if(curPage==='crypto')renderCrypto(el);
+  else if(curPage==='profile')el.innerHTML=renderProfile();
+}
+
+/* ═══════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   DASHBOARD — настраиваемые виджеты
+═══════════════════════════════════════════ */
+const ALL_WIDGETS=[
+  {id:'stats',name:'Карточки итогов',icon:'💰'},
+  {id:'areaChart',name:'Динамика месяца',icon:'📈'},
+  {id:'pieChart',name:'Расходы по категориям',icon:'🥧'},
+  {id:'insights',name:'Инсайты',icon:'💡'},
+  {id:'recent',name:'Последние операции',icon:'🧾'},
+  {id:'portfolioSummary',name:'Портфель — сводка',icon:'💼'},
+  {id:'marketTicker',name:'Крипта и золото',icon:'₿'},
+];
+function getDashboardConfig(){
+  let cfg=Array.isArray(currentUser.dashboardWidgets)?currentUser.dashboardWidgets.slice():[];
+  const known=new Set(cfg.map(c=>c.id));
+  ALL_WIDGETS.forEach(w=>{if(!known.has(w.id))cfg.push({id:w.id,visible:true})});
+  cfg=cfg.filter(c=>ALL_WIDGETS.some(w=>w.id===c.id));
+  return cfg;
+}
+function saveDashboardConfig(cfg){
+  currentUser.dashboardWidgets=cfg;
+  pushMe({dashboardWidgets:cfg});
+}
+function openDashSettings(){document.getElementById('dash-modal').style.display='grid';renderDashSettingsList()}
+function closeDashSettings(){document.getElementById('dash-modal').style.display='none'}
+function renderDashSettingsList(){
+  const cfg=getDashboardConfig();
+  const list=document.getElementById('dash-widget-list');if(!list)return;
+  list.innerHTML=cfg.map((c,i)=>{
+    const meta=ALL_WIDGETS.find(w=>w.id===c.id);
+    return`<div class="dash-set-row">
+      <label><input type="checkbox" ${c.visible?'checked':''} onchange="toggleDashWidget(${i})"/><span>${meta.icon} ${meta.name}</span></label>
+      <div class="dash-set-btns">
+        <button class="dash-set-btn" ${i===0?'disabled':''} onclick="moveDashWidget(${i},-1)">↑</button>
+        <button class="dash-set-btn" ${i===cfg.length-1?'disabled':''} onclick="moveDashWidget(${i},1)">↓</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleDashWidget(i){
+  const cfg=getDashboardConfig();cfg[i].visible=!cfg[i].visible;saveDashboardConfig(cfg);
+  renderDashSettingsList();if(curPage==='dashboard')render();
+}
+function moveDashWidget(i,dir){
+  const cfg=getDashboardConfig();const j=i+dir;if(j<0||j>=cfg.length)return;
+  [cfg[i],cfg[j]]=[cfg[j],cfg[i]];saveDashboardConfig(cfg);
+  renderDashSettingsList();if(curPage==='dashboard')render();
+}
+
+let dashTickerLoading=false;
+function dashPortfolioWidget(){
+  const port=getPortfolio();
+  if(!port.length)return`<div class="card" style="cursor:pointer" onclick="goPage('portfolio')"><div class="ctitle">Портфель</div><div class="empty" style="padding:16px 0"><div class="empty-ico">💼</div><div class="empty-t">Портфель пуст</div><div style="font-size:.68rem;color:var(--t3);margin-top:4px">Нажми, чтобы добавить активы</div></div></div>`;
+  const calcs=port.map(h=>calcHolding(h));
+  const totalValue=calcs.reduce((s,c)=>s+c.value,0);
+  const totalCost=calcs.reduce((s,c)=>s+c.costBasis,0);
+  const pnl=totalValue-totalCost;const pnlPct=totalCost>0?pnl/totalCost*100:0;const isUp=pnl>=0;
+  return`<div class="card" style="cursor:pointer" onclick="goPage('portfolio')">
+    <div class="ctitle">Портфель</div>
+    <div style="font-size:1.25rem;font-weight:900;color:var(--t1)">${fmtNum(totalValue)} ${currInfo().sym}</div>
+    ${totalCost>0?`<div style="font-size:.75rem;font-weight:700;color:${isUp?'var(--green)':'var(--red)'};margin-top:3px">${isUp?'▲':'▼'} ${fmtNum(Math.abs(pnl))} ${currInfo().sym} (${Math.abs(pnlPct).toFixed(2)}%)</div>`:''}
+    <div style="font-size:.63rem;color:var(--t3);margin-top:7px">${port.length} актив${port.length===1?'':(port.length>=2&&port.length<=4)?'а':'ов'} в портфеле</div>
+  </div>`;
+}
+function dashMarketTickerWidget(){
+  const btc=CRYPTOS.find(c=>c.id==='BTC'),eth=CRYPTOS.find(c=>c.id==='ETH'),gold=METALS.find(m=>m.id==='XAU');
+  const byId={};(cryptoLive?.markets||[]).forEach(m=>byId[m.id]=m);
+  const goldLive=mktLive.metals?mktLive.metals.data.XAU:null;
+  const rows=[btc,eth].map(coin=>{
+    const live=byId[coin.cg];
+    return{e:coin.e,name:coin.sym,price:live?'$'+fmtByMagnitude(live.current_price):null,chg:live?live.price_change_percentage_24h:null};
+  });
+  rows.push({e:gold.e,name:'Золото',price:goldLive!=null?currInfo().sym+fmtByMagnitude(usdTo(baseCurrency,goldLive)):null,chg:null});
+  if((!cryptoLive||!goldLive)&&!dashTickerLoading){
+    dashTickerLoading=true;
+    Promise.all([
+      fetchCryptoLive().then(d=>{cryptoLive=d;cryptoLastTs=Date.now()}).catch(()=>{}),
+      (!fxRates?ensureFxRates():Promise.resolve()),
+      fetchMetalsLive().then(d=>{mktLive.metals={data:d,ts:Date.now()}}).catch(()=>{})
+    ]).finally(()=>{dashTickerLoading=false;if(curPage==='dashboard')render()});
+  }
+  return`<div class="card" style="cursor:pointer" onclick="goPage('crypto')">
+    <div class="ctitle">Крипта и золото</div>
+    ${rows.map(r=>`<div class="dash-ticker-row">
+      <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1)">${r.e} ${r.name}</div>
+      <div style="text-align:right">
+        <div style="font-size:.78rem;font-weight:700;color:var(--t1)">${r.price||'…'}</div>
+        ${r.chg!=null?`<div style="font-size:.63rem;font-weight:700;color:${r.chg>=0?'var(--green)':'var(--red)'}">${r.chg>=0?'▲':'▼'} ${Math.abs(r.chg).toFixed(2)}%</div>`:''}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+function dashWidgetHTML(id,ctx){
+  const{tx,inc,exp,bal,rate,ins,recent}=ctx;
+  if(id==='stats')return`<div class="stats">
+    <div class="stat stat-bal">
+      <div class="stat-ico">💰</div><div class="stat-lbl">Баланс</div>
+      <div class="stat-val" style="color:${bal>=0?'var(--green)':'var(--red)'}">${fmt(bal)}</div>
+      <div class="stat-sub">${MONTHS[viewMonth]} ${viewYear}</div>
+      ${inc>0?`<span class="stat-tag ${rate>=0?'tag-g':'tag-r'}">${rate>=0?'▲':'▼'} ${Math.abs(rate)}% сбережений</span>`:''}
+    </div>
+    <div class="stat stat-inc">
+      <div class="stat-ico">📥</div><div class="stat-lbl">Доходы</div>
+      <div class="stat-val" style="color:var(--green)">${fmt(inc)}</div>
+      <div class="stat-sub">${tx.filter(t=>t.type==='income').length} транзакций</div>
+    </div>
+    <div class="stat stat-exp">
+      <div class="stat-ico">📤</div><div class="stat-lbl">Расходы</div>
+      <div class="stat-val" style="color:var(--red)">${fmt(exp)}</div>
+      <div class="stat-sub">${tx.filter(t=>t.type==='expense').length} транзакций</div>
+    </div>
+    <div class="stat stat-sav">
+      <div class="stat-ico">🏦</div><div class="stat-lbl">Накоплено</div>
+      <div class="stat-val" style="color:var(--yellow)">${fmt(Math.max(bal,0))}</div>
+      <div class="stat-sub">${rate>=0?rate+'% от дохода':'Дефицит'}</div>
+    </div>
+  </div>`;
+  if(id==='areaChart')return`<div class="card"><div class="ctitle">Динамика месяца (накопленно)</div><canvas id="area-chart" height="175"></canvas></div>`;
+  if(id==='pieChart')return`<div class="card"><div class="ctitle">Расходы по категориям</div><canvas id="pie-chart" height="160"></canvas><div id="pie-legend" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"></div></div>`;
+  if(id==='insights')return`<div class="card"><div class="ctitle">Инсайты</div>${ins.map(i=>`<div class="insight ins-${i.t}"><span class="ins-ico">${i.ic}</span><div><div class="ins-title">${i.title}</div><div class="ins-text">${i.text}</div></div></div>`).join('')}</div>`;
+  if(id==='recent')return`<div class="card"><div class="ctitle">Последние операции</div>${recent.length?recent.map(t=>txRow(t,false)).join(''):`<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">Нет операций</div></div>`}</div>`;
+  if(id==='portfolioSummary')return dashPortfolioWidget();
+  if(id==='marketTicker')return dashMarketTickerWidget();
+  return'';
+}
+function renderDash(tx,inc,exp,bal){
+  const rate=inc>0?Math.round(bal/inc*100):0;
+  const ins=buildInsights(tx,inc,exp,bal);
+  const recent=[...tx].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+  const ctx={tx,inc,exp,bal,rate,ins,recent};
+  const cfg=getDashboardConfig().filter(c=>c.visible);
+  return`
+  <div class="dash-toolbar"><button class="btn btn-ghost" style="font-size:.72rem" onclick="openDashSettings()">⚙ Настроить дашборд</button></div>
+  <div class="dash-grid">
+    ${cfg.map(c=>`<div class="dash-widget dash-w-${c.id}">${dashWidgetHTML(c.id,ctx)}</div>`).join('')}
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════
+   CANVAS CHARTS
+═══════════════════════════════════════════ */
+function rr(ctx,x,y,w,h,r){
+  if(h<0){y+=h;h=-h}if(w<0){x+=w;w=-w}r=Math.min(r,w/2,h/2,0);if(r<0)r=0;
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+}
+function drawArea(tx){
+  const c=document.getElementById('area-chart');if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.parentElement.clientWidth-32;const H=175;
+  c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;
+  c.style.width=W+'px';c.style.height=H+'px';
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  const days=new Date(viewYear,viewMonth+1,0).getDate();
+  const inc=new Array(days).fill(0),exp=new Array(days).fill(0);
+  tx.forEach(t=>{const d=new Date(t.date).getDate()-1;if(t.type==='income')inc[d]+=t.amount;else exp[d]+=t.amount});
+  let ci=0,ce=0;const ci_=[],ce_=[];
+  for(let i=0;i<days;i++){ci+=inc[i];ce+=exp[i];ci_.push(ci);ce_.push(ce)}
+  const maxV=Math.max(...ci_,...ce_,1);
+  const P={t:8,r:8,b:22,l:44};const W2=W-P.l-P.r,H2=H-P.t-P.b;
+  const xp=i=>P.l+i/(days-1||1)*W2;const yp=v=>P.t+H2-(v/maxV)*H2;
+  ctx.strokeStyle='rgba(128,128,128,.08)';ctx.lineWidth=1;
+  [.25,.5,.75,1].forEach(f=>{
+    const yy=P.t+H2-f*H2;ctx.beginPath();ctx.moveTo(P.l,yy);ctx.lineTo(W-P.r,yy);ctx.stroke();
+    ctx.fillStyle='rgba(150,160,190,.4)';ctx.font=`${10*1}px system-ui`;ctx.textAlign='right';
+    ctx.fillText(fmtNum(maxV*f),P.l-3,yy+3);
+  });
+  ctx.fillStyle='rgba(150,160,190,.4)';ctx.font='10px system-ui';ctx.textAlign='center';
+  [1,7,14,21,days].forEach(d=>{const i=Math.min(d-1,days-1);ctx.fillText(d,xp(i),H-3)});
+  function area(vals,col){
+    const g=ctx.createLinearGradient(0,P.t,0,P.t+H2);
+    g.addColorStop(0,col+'35');g.addColorStop(1,col+'00');
+    ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+    for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+    ctx.lineTo(xp(vals.length-1),P.t+H2);ctx.lineTo(xp(0),P.t+H2);ctx.closePath();
+    ctx.fillStyle=g;ctx.fill();
+    ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+    for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+  }
+  area(ce_,'#f87171');area(ci_,'#34d399');
+}
+function drawPie(tx){
+  const c=document.getElementById('pie-chart');if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.parentElement.clientWidth-32;
+  c.width=W*devicePixelRatio;c.height=160*devicePixelRatio;
+  c.style.width=W+'px';c.style.height='160px';
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  const map={};tx.filter(t=>t.type==='expense').forEach(t=>{map[t.category]=(map[t.category]||0)+t.amount});
+  const data=Object.entries(map).map(([id,v])=>({...getCat(id),v})).sort((a,b)=>b.v-a.v).slice(0,6);
+  if(!data.length){ctx.fillStyle='rgba(100,110,140,.4)';ctx.font='13px system-ui';ctx.textAlign='center';ctx.fillText('Нет расходов',W/2,80);return}
+  const total=data.reduce((s,d)=>s+d.v,0);
+  const cx=W/2,cy=78,r=62,ri=36;let angle=-Math.PI/2;
+  data.forEach(d=>{
+    const slice=d.v/total*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();
+    ctx.fillStyle=d.c;ctx.fill();angle+=slice;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);
+  const isDarkTheme=document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.fillStyle=isDarkTheme?'#11141c':'#ffffff';ctx.fill();
+  ctx.fillStyle=isDarkTheme?'rgba(238,240,248,.85)':'rgba(20,23,42,.85)';
+  ctx.font='bold 11px system-ui';ctx.textAlign='center';
+  ctx.fillText(fmtNum(total),cx,cy-1);
+  ctx.fillStyle='rgba(150,160,190,.5)';ctx.font='9px system-ui';ctx.fillText(currInfo().sym,cx,cy+10);
+  const leg=document.getElementById('pie-legend');
+  if(leg)leg.innerHTML=data.map(d=>`<span style="display:flex;align-items:center;gap:3px;font-size:.62rem;color:var(--t2)"><span style="width:6px;height:6px;border-radius:50%;background:${d.c};flex-shrink:0;display:inline-block"></span>${d.l}</span>`).join('');
+}
+function getLast6(){
+  const res=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(viewYear,viewMonth-i,1);const m=d.getMonth(),y=d.getFullYear();
+    const tx=getTx().filter(t=>{const dd=new Date(t.date);return dd.getMonth()===m&&dd.getFullYear()===y});
+    res.push({label:MONTHS_S[m],inc:tInc(tx),exp:tExp(tx)});
+  }
+  return res;
+}
+function drawBar(){
+  const c=document.getElementById('bar-chart');if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.parentElement.clientWidth-32;const H=200;
+  c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;
+  c.style.width=W+'px';c.style.height=H+'px';ctx.scale(devicePixelRatio,devicePixelRatio);
+  const data=getLast6();const maxV=Math.max(...data.map(d=>Math.max(d.inc,d.exp)),1);
+  const P={t:8,r:8,b:24,l:44};const W2=W-P.l-P.r,H2=H-P.t-P.b;
+  const bw=W2/data.length*.28,gap=W2/data.length;
+  ctx.strokeStyle='rgba(128,128,128,.07)';ctx.lineWidth=1;
+  [.25,.5,.75,1].forEach(f=>{
+    const yy=P.t+H2-f*H2;ctx.beginPath();ctx.moveTo(P.l,yy);ctx.lineTo(W-P.r,yy);ctx.stroke();
+    ctx.fillStyle='rgba(150,160,190,.4)';ctx.font='10px system-ui';ctx.textAlign='right';
+    ctx.fillText(fmtNum(maxV*f),P.l-3,yy+3);
+  });
+  data.forEach((d,i)=>{
+    const cx=P.l+i*gap+gap/2;
+    const ih=d.inc/maxV*H2,eh=d.exp/maxV*H2;
+    ctx.fillStyle='rgba(52,211,153,.72)';ctx.beginPath();rr(ctx,cx-bw-2,P.t+H2-ih,bw,ih,3);ctx.fill();
+    ctx.fillStyle='rgba(248,113,113,.72)';ctx.beginPath();rr(ctx,cx+2,P.t+H2-eh,bw,eh,3);ctx.fill();
+    ctx.fillStyle='rgba(150,160,190,.5)';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(d.label,cx,H-4);
+  });
+}
+function drawBal(){
+  const c=document.getElementById('bal-chart');if(!c)return;
+  const ctx=c.getContext('2d');
+  const W=c.parentElement.clientWidth-32;const H=130;
+  c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;
+  c.style.width=W+'px';c.style.height=H+'px';ctx.scale(devicePixelRatio,devicePixelRatio);
+  const data=getLast6().map(d=>({label:d.label,bal:d.inc-d.exp}));
+  const maxV=Math.max(...data.map(d=>Math.abs(d.bal)),1);
+  const P={t:8,r:8,b:24,l:44};const W2=W-P.l-P.r,H2=H-P.t-P.b;
+  const mid=P.t+H2/2,bw=W2/data.length*.42,gap=W2/data.length;
+  ctx.strokeStyle='rgba(128,128,128,.1)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(P.l,mid);ctx.lineTo(W-P.r,mid);ctx.stroke();
+  data.forEach((d,i)=>{
+    const cx=P.l+i*gap+gap/2;const h=Math.abs(d.bal)/maxV*(H2/2);
+    ctx.fillStyle=d.bal>=0?'rgba(52,211,153,.75)':'rgba(248,113,113,.75)';
+    ctx.beginPath();if(d.bal>=0)rr(ctx,cx-bw/2,mid-h,bw,h,3);else rr(ctx,cx-bw/2,mid,bw,h,3);ctx.fill();
+    ctx.fillStyle='rgba(150,160,190,.5)';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText(d.label,cx,H-4);
+  });
+}
+function drawSparkline(canvasId,vals,color){
+  const c=document.getElementById(canvasId);if(!c||!vals.length)return;
+  const ctx=c.getContext('2d');const W=c.offsetWidth||200,H=44;
+  c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;
+  c.style.width=W+'px';c.style.height=H+'px';ctx.scale(devicePixelRatio,devicePixelRatio);
+  const mn=Math.min(...vals),mx=Math.max(...vals);const range=mx-mn||1;
+  const xp=i=>i/(vals.length-1||1)*W;const yp=v=>H-4-(v-mn)/range*(H-8);
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,color+'40');g.addColorStop(1,color+'00');
+  ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+  for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+  for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+}
+
+/* ═══════════════════════════════════════════
+   TRANSACTIONS
+═══════════════════════════════════════════ */
+function renderTx(tx){
+  let filtered=[...tx];
+  if(filterType!=='all')filtered=filtered.filter(t=>t.type===filterType);
+  if(filterCat)filtered=filtered.filter(t=>t.category===filterCat);
+  filtered.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const usedCats=[...new Set(tx.map(t=>t.category))].map(getCat);
+  const grouped={};filtered.forEach(t=>{if(!grouped[t.date])grouped[t.date]=[];grouped[t.date].push(t)});
+  return`
+  <input class="search-box" type="text" placeholder="🔍  Поиск..." id="tx-search" oninput="txSearch(this.value)">
+  <div class="chips">
+    ${['all','income','expense'].map(ty=>`<button class="chip ${filterType===ty?'on':''}" onclick="setFT('${ty}')">${ty==='all'?'Все':ty==='income'?'↑ Доходы':'↓ Расходы'}</button>`).join('')}
+    <div style="width:1px;height:16px;background:var(--border);margin:0 2px;align-self:center"></div>
+    ${usedCats.map(c=>`<button class="chip ${filterCat===c.id?'on':''}" onclick="setFC('${c.id}')"><span class="chip-dot" style="background:${c.c}"></span>${c.l}</button>`).join('')}
+  </div>
+  ${Object.keys(grouped).length===0?`<div class="card"><div class="empty"><div class="empty-ico">🔍</div><div class="empty-t">Ничего не найдено</div></div></div>`
+    :Object.entries(grouped).sort((a,b)=>new Date(b[0])-new Date(a[0])).map(([date,txs])=>{
+      const dl=new Date(date).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+      const db=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)-txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      return`<div style="margin-bottom:13px">
+        <div class="day-lbl">${dl} <span style="color:${db>=0?'var(--green)':'var(--red)'};margin-left:5px">${fmt(db,true)}</span></div>
+        <div class="card card-sm">${txs.map(t=>txRow(t,true)).join('')}</div>
+      </div>`;
+    }).join('')}`;
+}
+function txRow(t,del){
+  const cat=getCat(t.category);const d=new Date(t.date).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+  return`<div class="tx-item">
+    <div class="tx-cat" style="background:${cat.c}1e">${cat.e}</div>
+    <div class="tx-body"><div class="tx-name">${t.note||cat.l}</div><div class="tx-meta">${cat.l}${del?'':` · ${d}`}</div></div>
+    <div class="tx-right">
+      <span class="tx-amt ${t.type==='income'?'inc':'exp'}">${t.type==='income'?'+':'−'}${fmtNum(t.amount)} ${currInfo().sym}</span>
+      ${del?`<button class="tx-del" onclick="deleteTx('${t.id}')">✕</button>`:''}
+    </div>
+  </div>`;
+}
+function txSearch(q){filterType='all';filterCat=null;const tx=monthTx();let f=[...tx];if(q.trim()){const ql=q.toLowerCase();f=f.filter(t=>(t.note||getCat(t.category).l).toLowerCase().includes(ql))}f.sort((a,b)=>new Date(b.date)-new Date(a.date));const grouped={};f.forEach(t=>{if(!grouped[t.date])grouped[t.date]=[];grouped[t.date].push(t)});const listHTML=Object.keys(grouped).length===0?`<div class="card"><div class="empty"><div class="empty-ico">🔍</div><div class="empty-t">Ничего не найдено</div></div></div>`:Object.entries(grouped).sort((a,b)=>new Date(b[0])-new Date(a[0])).map(([date,txs])=>{const dl=new Date(date).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});const db=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0)-txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);return`<div style="margin-bottom:13px"><div class="day-lbl">${dl} <span style="color:${db>=0?'var(--green)':'var(--red)'};margin-left:5px">${fmt(db,true)}</span></div><div class="card card-sm">${txs.map(t=>txRow(t,true)).join('')}</div></div>`;}).join('');const el=document.getElementById('content');Array.from(el.children).slice(2).forEach(n=>n.remove());el.insertAdjacentHTML('beforeend',listHTML);}
+function setFT(t){filterType=t;render()}
+function setFC(id){filterCat=filterCat===id?null:id;render()}
+
+/* ═══════════════════════════════════════════
+   BUDGETS
+═══════════════════════════════════════════ */
+function renderBudgets(tx){
+  const budgets=getBudgets();const spent={};
+  tx.filter(t=>t.type==='expense').forEach(t=>{spent[t.category]=(spent[t.category]||0)+t.amount});
+  if(!Object.keys(budgets).length)return`<div class="card"><div class="empty"><div class="empty-ico">🎯</div><div class="empty-t">Бюджеты не настроены</div><div class="empty-s">Установи лимиты расходов<br>чтобы контролировать траты</div><button class="btn btn-primary" style="margin-top:13px" onclick="openBudgetModal()">Настроить бюджеты</button></div></div>`;
+  function pc(p){return p>=100?'var(--red)':p>=80?'var(--yellow)':'var(--green)'}
+  const cards=Object.entries(budgets).map(([id,lim])=>{
+    const cat=getCat(id);const s=spent[id]||0;const pct=Math.min(Math.round(s/lim*100),100);const over=s>lim;
+    return`<div class="bud-card"><div class="bud-hd"><div class="bud-ico" style="background:${cat.c}1e">${cat.e}</div><div class="bud-info"><div class="bud-name">${cat.l}</div><div class="bud-spent">${fmt(s)} из ${fmt(lim)}</div></div><span class="bud-pct" style="color:${pc(pct)}">${pct}%</span></div><div class="track"><div class="fill" style="width:${pct}%;background:${pc(pct)}"></div></div><div class="bud-ft"><span>${over?'⚠ Перерасход '+fmt(s-lim):'Осталось '+fmt(lim-s)}</span><span>${over?'❌':pct>=80?'⚠️':'✅'}</span></div></div>`;
+  }).join('');
+  const noLim=Object.entries(spent).filter(([id])=>!budgets[id]);
+  return`<div class="bud-grid">${cards}</div>${noLim.length?`<div style="margin-top:14px"><div style="font-size:.59rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Без лимита</div><div class="card card-sm">${noLim.map(([id,amt])=>{const cat=getCat(id);return`<div class="tx-item"><div class="tx-cat" style="background:${cat.c}1e">${cat.e}</div><div class="tx-body"><div class="tx-name">${cat.l}</div><div class="tx-meta">Лимит не задан</div></div><span class="tx-amt exp">${fmt(amt)}</span></div>`}).join('')}</div></div>`:''}`;
+}
+
+/* ═══════════════════════════════════════════
+   ANALYTICS
+═══════════════════════════════════════════ */
+function renderAnalytics(){
+  const last6=getLast6();const tI=last6.reduce((s,m)=>s+m.inc,0),tE=last6.reduce((s,m)=>s+m.exp,0);
+  const aI=Math.round(tI/6),aE=Math.round(tE/6);
+  const curTx=getTx().filter(t=>{const d=new Date(t.date);return d.getMonth()===viewMonth&&d.getFullYear()===viewYear});
+  const cmap={};curTx.filter(t=>t.type==='expense').forEach(t=>{cmap[t.category]=(cmap[t.category]||0)+t.amount});
+  const catData=Object.entries(cmap).map(([id,v])=>({...getCat(id),v})).sort((a,b)=>b.v-a.v);
+  const mx=catData[0]?.v||1;
+  return`
+  <div class="ana-stats">
+    <div class="stat stat-inc"><div class="stat-ico">📊</div><div class="stat-lbl">Ср. доход / мес</div><div class="stat-val" style="color:var(--green)">${fmt(aI)}</div><div class="stat-sub">за 6 месяцев</div></div>
+    <div class="stat stat-exp"><div class="stat-ico">📊</div><div class="stat-lbl">Ср. расход / мес</div><div class="stat-val" style="color:var(--red)">${fmt(aE)}</div><div class="stat-sub">за 6 месяцев</div></div>
+    <div class="stat stat-sav"><div class="stat-ico">📈</div><div class="stat-lbl">Итого сохранено</div><div class="stat-val" style="color:${tI-tE>=0?'var(--yellow)':'var(--red)'}">${fmt(tI-tE)}</div><div class="stat-sub">за 6 месяцев</div></div>
+  </div>
+  <div class="ana-grid">
+    <div class="card"><div class="ctitle">Доходы vs Расходы (6 мес.)</div><canvas id="bar-chart" height="200"></canvas></div>
+    <div class="card"><div class="ctitle">Структура расходов — ${MONTHS[viewMonth]}</div>
+      ${catData.length?catData.map(c=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span style="font-size:.82rem;width:17px;text-align:center">${c.e}</span><span style="font-size:.71rem;color:var(--t2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.l}</span><div style="flex:2;height:4px;background:var(--s3);border-radius:99px;overflow:hidden"><div style="height:100%;width:${c.v/mx*100}%;background:${c.c};border-radius:99px"></div></div><span style="font-size:.68rem;font-weight:700;color:var(--t1);min-width:65px;text-align:right;font-variant-numeric:tabular-nums">${fmt(c.v)}</span></div>`).join(''):`<div class="empty" style="padding:20px 0"><div class="empty-ico">📊</div><div class="empty-t">Нет данных</div></div>`}
+    </div>
+  </div>
+  <div class="card"><div class="ctitle">Баланс по месяцам</div><canvas id="bal-chart" height="130"></canvas></div>`;
+}
+
+/* ═══════════════════════════════════════════
+   MARKETS PAGE — Металлы, нефть, валюты (live-данные)
+   Золото/серебро/платина/палладий/медь: api.gold-api.com (бесплатно, без ключа)
+   Валюты: open.er-api.com (бесплатно, без ключа, курсы ЦБ обновляются раз в сутки)
+   Нефть и газ: свободного API без ключа не нашлось — оставлено как демо
+═══════════════════════════════════════════ */
+const METALS=[
+  {id:'XAU',name:'Золото',sym:'XAU/USD',e:'🥇',color:'#f59e0b',base:2320,api:'XAU'},
+  {id:'XAG',name:'Серебро',sym:'XAG/USD',e:'🥈',color:'#94a3b8',base:27.5,api:'XAG'},
+  {id:'XPT',name:'Платина',sym:'XPT/USD',e:'⬜',color:'#60a5fa',base:960,api:'XPT'},
+  {id:'XPD',name:'Палладий',sym:'XPD/USD',e:'🔵',color:'#a78bfa',base:1020,api:'XPD'},
+  {id:'CU',name:'Медь',sym:'CU/USD',e:'🟤',color:'#c2440f',base:4.2,api:'HG'},
+];
+const OILS=[
+  {id:'BRENT',name:'Brent',sym:'BRENT',e:'🛢️',color:'#374151',base:83},
+  {id:'WTI',name:'WTI',sym:'WTI',e:'🛢️',color:'#1f2937',base:79},
+  {id:'NG',name:'Природный газ',sym:'NG/USD',e:'🔥',color:'#f97316',base:2.4},
+];
+const CURRENCY_MAJORS=[
+  {code:'USD',name:'Доллар США',e:'🇺🇸',color:'#3b82f6'},
+  {code:'EUR',name:'Евро',e:'🇪🇺',color:'#22c55e'},
+  {code:'GBP',name:'Фунт стерлингов',e:'🇬🇧',color:'#8b5cf6'},
+  {code:'CNY',name:'Китайский юань',e:'🇨🇳',color:'#ef4444'},
+  {code:'JPY',name:'Японская иена',e:'🇯🇵',color:'#ec4899'},
+  {code:'RUB',name:'Российский рубль',e:'🇷🇺',color:'#0ea5e9'},
+  {code:'CHF',name:'Швейцарский франк',e:'🇨🇭',color:'#f59e0b'},
+  {code:'KZT',name:'Казахстанский тенге',e:'🇰🇿',color:'#a78bfa'},
+];
+/* пары строятся динамически относительно текущей базовой валюты пользователя */
+function getCurrencyPairs(){
+  return CURRENCY_MAJORS.filter(m=>m.code!==baseCurrency).map(m=>{
+    const x100=m.code==='JPY';
+    return{id:m.code+'_'+baseCurrency,name:m.name,sym:x100?`${m.code}/${baseCurrency} ×100`:`${m.code}/${baseCurrency}`,e:m.e,color:m.color,code:m.code,x100};
+  });
+}
+let mktData={},mktLastFetch=0,mktTabActive='metals',mktLive={};
+
+function genPrice(base,vol,seed){
+  const t=Math.floor(Date.now()/60000);const h=Math.abs(hash(seed+t))%1000/1000;
+  return base*(1+(h-.5)*vol*2);
+}
+function genHistory(base,vol,seed,n=20){
+  const arr=[];let p=base;
+  for(let i=0;i<n;i++){const r=(Math.abs(hash(seed+i))%1000/1000-.5)*vol;p=p*(1+r);arr.push(p)}
+  return arr;
+}
+function fmtPrice(v,decimals=2){return v.toLocaleString('en-US',{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}
+function fmtByMagnitude(v){
+  const a=Math.abs(v);
+  if(a>=1000)return fmtPrice(v,0);
+  if(a>=100)return fmtPrice(v,2);
+  if(a>=10)return fmtPrice(v,3);
+  if(a>=1)return fmtPrice(v,4);
+  return fmtPrice(v,6);
+}
+function fmtCompactUsd(v){
+  if(v>=1e12)return(v/1e12).toFixed(2)+'T';
+  if(v>=1e9)return(v/1e9).toFixed(1)+'B';
+  if(v>=1e6)return(v/1e6).toFixed(1)+'M';
+  return v.toLocaleString('en-US');
+}
+function liveTs(ts){if(!ts)return'';const s=Math.floor((Date.now()-ts)/1000);const m=Math.floor(s/60);return m<1?' · обновлено только что':` · ${m} мин назад`}
+async function fetchJSON(url){
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/* --- локальная история котировок для спарклайнов и % изменения за день (копится по мере использования) --- */
+function pushPriceHistory(id,price){
+  const store=ld('ff_price_hist',{});
+  const arr=store[id]||[];
+  const now=Date.now();
+  if(!arr.length||now-arr[arr.length-1].t>5*60000){
+    arr.push({t:now,v:price});
+    if(arr.length>300)arr.shift();
+    store[id]=arr;sv('ff_price_hist',store);
+  }
+  return arr;
+}
+function getPriceHistory(id){return(ld('ff_price_hist',{})||{})[id]||[]}
+function getDayChange(id,current){
+  const arr=getPriceHistory(id);if(arr.length<2)return null;
+  const dayAgo=Date.now()-23*3600000;
+  let ref=null;
+  for(const p of arr){if(p.t<=dayAgo)ref=p;}
+  if(!ref)return null;
+  return{chg:current-ref.v,pct:(current-ref.v)/ref.v*100};
+}
+
+/* --- реальные источники котировок --- */
+async function fetchMetalsLive(){
+  if(!fxRates)await ensureFxRates();
+  const out={};
+  await Promise.all(METALS.map(async m=>{
+    try{
+      const d=await fetchJSON(`https://api.gold-api.com/price/${m.api}`);
+      if(typeof d.price==='number'){out[m.id]=d.price;pushPriceHistory('m_'+m.id,d.price)}
+    }catch(e){/* этот металл не удалось получить — покажем демо-цену только для него */}
+  }));
+  return out; // цены в USD — конвертируются в баз. валюту при отображении (computeMarketItem)
+}
+async function fetchCurrenciesLive(){
+  const d=await fetchJSON('https://open.er-api.com/v6/latest/USD');
+  if(!d.rates)throw new Error('bad payload');
+  fxRates=d.rates;fxRatesTs=Date.now();sv('ff_fx_rates',{rates:fxRates,ts:fxRatesTs});
+  const pairs=getCurrencyPairs();const out={};
+  pairs.forEach(p=>{
+    let rate=crossRate(p.code,baseCurrency);
+    if(p.x100)rate*=100;
+    if(rate){out[p.id]=rate;pushPriceHistory('c_'+p.id,rate)}
+  });
+  return out; // уже в баз. валюте пользователя
+}
+
+function computeMarketItem(item,tab){
+  const isLive=tab==='metals'||tab==='currency';
+  const liveInfo=mktLive[tab];
+  const rawLive=isLive&&liveInfo?liveInfo.data[item.id]:null;
+  const toBase=tab==='metals'?(v=>usdTo(baseCurrency,v)):(v=>v); // металлы хранятся в USD, валюты — уже в baseCurrency
+  if(rawLive!=null){
+    const hkey=(tab==='metals'?'m_':'c_')+item.id;
+    const histRaw=getPriceHistory(hkey).map(p=>p.v);
+    const dc=getDayChange(hkey,rawLive);
+    return{
+      price:toBase(rawLive),
+      chg:dc?toBase(dc.chg):0,
+      chgPct:dc?dc.pct:0,
+      hist:(histRaw.length>=2?histRaw:[rawLive,rawLive]).map(toBase),
+      hasChange:!!dc,
+      status:dc?'🟢 Live-курс':'🟢 Live-курс · копим историю для % за день',
+      live:true
+    };
+  }
+  const price=genPrice(item.base,0.015,item.id);
+  const prev=genPrice(item.base,0.015,item.id+'prev');
+  const chg=price-prev;
+  return{
+    price,chg,chgPct:chg/prev*100,
+    hist:genHistory(item.base,0.012,item.id+'h'),
+    hasChange:true,
+    status:isLive?'⚠️ Live-курс недоступен · демо-цена':'🎲 Демо-данные (нет бесплатного live-источника)',
+    live:false
+  };
+}
+
+function renderMarkets(el){
+  const tabs=[{id:'metals',l:'⛏ Металлы'},{id:'oil',l:'🛢 Нефть и газ'},{id:'currency',l:'💱 Валюты'}];
+  el.innerHTML=`
+  <div class="markets-header">
+    <div class="markets-title">Рынки</div>
+    <button class="refresh-btn" onclick="refreshMarkets()" id="refresh-mkt-btn"><span class="r-ico">↺</span> Обновить</button>
+  </div>
+  <div class="markets-tabs">
+    ${tabs.map(t=>`<button class="market-tab ${mktTabActive===t.id?'on':''}" onclick="setMktTab('${t.id}')">${t.l}</button>`).join('')}
+  </div>
+  <div id="mkt-body"></div>`;
+  loadMktTab();
+}
+function setMktTab(t){mktTabActive=t;loadMktTab()}
+function refreshMarkets(){
+  const btn=document.getElementById('refresh-mkt-btn');if(btn)btn.classList.add('spinning');
+  delete mktLive[mktTabActive];loadMktTab(true);
+}
+async function loadMktTab(forceFetch){
+  const tab=mktTabActive;
+  const body=document.getElementById('mkt-body');if(!body)return;
+  const isLive=tab==='metals'||tab==='currency';
+
+  if(isLive&&(forceFetch||!mktLive[tab]||Date.now()-mktLive[tab].ts>5*60000)){
+    body.innerHTML=`<div class="empty" style="padding:40px 0"><div class="empty-ico">📡</div><div class="empty-t">Загружаем актуальные котировки…</div></div>`;
+    try{
+      const data=tab==='metals'?await fetchMetalsLive():await fetchCurrenciesLive();
+      mktLive[tab]={data,ts:Date.now()};
+    }catch(e){mktLive[tab]=mktLive[tab]||{data:{},ts:Date.now()}}
+    if(mktTabActive!==tab)return; // пользователь уже переключил вкладку
+  }
+
+  const items=tab==='metals'?METALS:tab==='oil'?OILS:getCurrencyPairs();
+  const unit=tab==='oil'?'$':currInfo().sym;
+  body.innerHTML=`<div class="markets-grid">
+    ${items.map(item=>{
+      const m=computeMarketItem(item,tab);
+      const isUp=m.chg>=0;
+      const priceStr=fmtByMagnitude(m.price);
+      return`<div class="market-card" id="mc-${item.id}" onclick="openAssetDetail('${tab}','${item.id}')">
+        <div class="market-card-hd">
+          <div class="market-icon" style="background:${item.color}20">${item.e}</div>
+          <div><div class="market-name">${item.name}</div><div class="market-sym">${item.sym}</div></div>
+        </div>
+        <div class="market-price">${unit}${priceStr}</div>
+        ${m.hasChange?`<span class="market-change ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(m.chgPct).toFixed(2)}%</span>
+        <div class="market-meta">${isUp?'+':''}${unit}${fmtByMagnitude(Math.abs(m.chg))} за день</div>`:'<div class="market-meta">Копим историю для расчёта дневного изменения</div>'}
+        <div class="market-sparkline"><canvas id="spark-${item.id}" width="220" height="44"></canvas></div>
+        <div class="market-updated">${m.status}${m.live?liveTs(mktLive[tab]&&mktLive[tab].ts):''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  setTimeout(()=>{
+    items.forEach(item=>{
+      const m=computeMarketItem(item,tab);
+      const isUp=m.hist[m.hist.length-1]>=m.hist[0];
+      drawSparkline('spark-'+item.id,m.hist,isUp?'#34d399':'#f87171');
+    });
+    const btn=document.getElementById('refresh-mkt-btn');if(btn)btn.classList.remove('spinning');
+  },100);
+}
+
+/* ═══════════════════════════════════════════
+   CRYPTO PAGE — live-данные CoinGecko (бесплатно, без ключа)
+   + индекс страха и жадности alternative.me (бесплатно, без ключа)
+═══════════════════════════════════════════ */
+const CRYPTOS=[
+  {id:'BTC',name:'Bitcoin',sym:'BTC',e:'₿',color:'#f59e0b',base:67000,mcap:'1.3T',cg:'bitcoin'},
+  {id:'ETH',name:'Ethereum',sym:'ETH',e:'Ξ',color:'#6366f1',base:3500,mcap:'421B',cg:'ethereum'},
+  {id:'BNB',name:'BNB',sym:'BNB',e:'🟡',color:'#eab308',base:580,mcap:'84B',cg:'binancecoin'},
+  {id:'SOL',name:'Solana',sym:'SOL',e:'◎',color:'#8b5cf6',base:175,mcap:'82B',cg:'solana'},
+  {id:'XRP',name:'XRP',sym:'XRP',e:'✕',color:'#06b6d4',base:0.62,mcap:'68B',cg:'ripple'},
+  {id:'ADA',name:'Cardano',sym:'ADA',e:'₳',color:'#3b82f6',base:0.48,mcap:'17B',cg:'cardano'},
+  {id:'DOGE',name:'Dogecoin',sym:'DOGE',e:'🐕',color:'#f97316',base:0.165,mcap:'24B',cg:'dogecoin'},
+  {id:'TON',name:'Toncoin',sym:'TON',e:'💎',color:'#0ea5e9',base:6.8,mcap:'17B',cg:'the-open-network'},
+  {id:'AVAX',name:'Avalanche',sym:'AVAX',e:'🔺',color:'#ef4444',base:38,mcap:'16B',cg:'avalanche-2'},
+  {id:'LINK',name:'Chainlink',sym:'LINK',e:'🔗',color:'#2563eb',base:15,mcap:'9B',cg:'chainlink'},
+  {id:'DOT',name:'Polkadot',sym:'DOT',e:'⬤',color:'#e879f9',base:8,mcap:'11B',cg:'polkadot'},
+  {id:'MATIC',name:'Polygon',sym:'MATIC',e:'🟣',color:'#a855f7',base:0.72,mcap:'7B',cg:'matic-network'},
+];
+let cryptoTabActive='all';
+let cryptoLive=null,cryptoLastTs=0;
+
+function downsample(arr,n){if(!arr||arr.length<=n)return arr||[];const step=arr.length/n;const out=[];for(let i=0;i<n;i++)out.push(arr[Math.floor(i*step)]);return out}
+function translateFng(word,val){
+  const map={'Extreme Fear':'Экстремальный страх','Fear':'Страх','Neutral':'Нейтрально','Greed':'Жадность','Extreme Greed':'Экстремальная жадность'};
+  return map[word]||(val<25?'Экстремальный страх':val<45?'Страх':val<55?'Нейтрально':val<75?'Жадность':'Экстремальная жадность');
+}
+async function fetchCryptoLive(){
+  const ids=CRYPTOS.map(c=>c.cg).join(',');
+  const[markets,glob,fng]=await Promise.allSettled([
+    fetchJSON(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h`),
+    fetchJSON('https://api.coingecko.com/api/v3/global'),
+    fetchJSON('https://api.alternative.me/fng/?limit=1')
+  ]);
+  return{
+    markets:markets.status==='fulfilled'?markets.value:null,
+    global:glob.status==='fulfilled'?glob.value?.data:null,
+    fng:fng.status==='fulfilled'?fng.value?.data?.[0]:null
+  };
+}
+function renderCrypto(el){
+  if(cryptoLive&&Date.now()-cryptoLastTs<5*60000){drawCryptoPage();return}
+  el.innerHTML=`<div class="empty" style="padding:60px 0"><div class="empty-ico">📡</div><div class="empty-t">Загружаем котировки с CoinGecko…</div></div>`;
+  loadCryptoData();
+}
+async function loadCryptoData(){
+  try{
+    cryptoLive=await fetchCryptoLive();
+    cryptoLastTs=Date.now();
+  }catch(e){/* оставляем то, что уже было загружено ранее (если было) */}
+  if(curPage==='crypto')drawCryptoPage();
+}
+function refreshCrypto(){
+  const btn=document.getElementById('refresh-crypto-btn');if(btn)btn.classList.add('spinning');
+  loadCryptoData().then(()=>showToast('📊 Данные обновлены'));
+}
+function drawCryptoPage(){
+  const el=document.getElementById('content');if(!el||curPage!=='crypto')return;
+  const byId={};(cryptoLive?.markets||[]).forEach(m=>byId[m.id]=m);
+  const g=cryptoLive?.global;
+  const fngD=cryptoLive?.fng;
+  const isLive=!!cryptoLive?.markets;
+
+  const fng=fngD?parseInt(fngD.value):Math.floor(42+Math.abs(hash('fng'+Math.floor(Date.now()/3600000)))%40);
+  const fngWord=translateFng(fngD?.value_classification,fng);
+  const fngColor=fng<45?'#f87171':fng<55?'#fbbf24':'#34d399';
+  const dashArray=`${fng} ${100-fng}`;
+
+  const totalMC=g?fmtCompactUsd(g.total_market_cap.usd):'2.54T';
+  const vol24h=g?fmtCompactUsd(g.total_volume.usd):'128B';
+  const btcDom=g?g.market_cap_percentage.btc.toFixed(1):'52.4';
+  const mcChg=g?g.market_cap_change_percentage_24h_usd:null;
+  const activeCoins=g?g.active_cryptocurrencies.toLocaleString('ru-RU'):'22 800+';
+
+  el.innerHTML=`
+  <div class="markets-header">
+    <div class="markets-title">Криптовалюты</div>
+    <button class="refresh-btn" onclick="refreshCrypto()" id="refresh-crypto-btn"><span class="r-ico">↺</span> Обновить</button>
+  </div>
+
+  <div class="fng-wrap">
+    <div class="fng-gauge">
+      <svg viewBox="0 0 36 36">
+        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--s3)" stroke-width="3.5"/>
+        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${fngColor}" stroke-width="3.5" stroke-dasharray="${dashArray}" stroke-linecap="round"/>
+      </svg>
+      <div class="fng-val"><div class="fng-num" style="color:${fngColor}">${fng}</div><div class="fng-word">${fng<50?'Страх':'Жадность'}</div></div>
+    </div>
+    <div class="fng-info">
+      <div class="fng-title">Индекс страха и жадности: <span style="color:${fngColor}">${fngWord}</span></div>
+      <div class="fng-sub">Рынок в состоянии ${fng<50?'страха — возможны покупки':'жадности — высокий риск перегрева'}. Общая капитализация: $${totalMC}. Объём 24ч: $${vol24h}.</div>
+    </div>
+  </div>
+
+  <div class="mkt-summary">
+    <div class="mkt-sum-card"><div class="mkt-sum-lbl">Капитализация</div><div class="mkt-sum-val">$${totalMC}</div><div class="mkt-sum-sub">${mcChg!=null?(mcChg>=0?'+':'')+mcChg.toFixed(2)+'% за 24ч':'—'}</div></div>
+    <div class="mkt-sum-card"><div class="mkt-sum-lbl">Объём 24ч</div><div class="mkt-sum-val">$${vol24h}</div><div class="mkt-sum-sub">По данным CoinGecko</div></div>
+    <div class="mkt-sum-card"><div class="mkt-sum-lbl">Доминация BTC</div><div class="mkt-sum-val">${btcDom}%</div><div class="mkt-sum-sub">${isLive?'Live':'—'}</div></div>
+    <div class="mkt-sum-card"><div class="mkt-sum-lbl">Активных монет</div><div class="mkt-sum-val">${activeCoins}</div><div class="mkt-sum-sub">По данным CoinGecko</div></div>
+  </div>
+
+  <div class="markets-grid" id="crypto-grid">
+    ${CRYPTOS.map((coin,idx)=>{
+      const live=byId[coin.cg];
+      const price=live?live.current_price:genPrice(coin.base,0.025,coin.id);
+      const chgPct=live?(live.price_change_percentage_24h??0):((genPrice(coin.base,0.025,coin.id)-genPrice(coin.base,0.025,coin.id+'p'))/genPrice(coin.base,0.025,coin.id+'p')*100);
+      const prevPrice=live?price/(1+chgPct/100):genPrice(coin.base,0.025,coin.id+'p');
+      const chg=price-prevPrice;const isUp=chgPct>=0;
+      const priceStr=price>=100?fmtPrice(price,2):price>=1?fmtPrice(price,4):fmtPrice(price,6);
+      const mcap=live?fmtCompactUsd(live.market_cap):coin.mcap;
+      const hist=live?.sparkline_in_7d?.price?downsample(live.sparkline_in_7d.price,24):genHistory(coin.base,0.018,coin.id+'h');
+      return`<div class="market-card" onclick="openAssetDetail('crypto','${coin.id}')">
+        <div class="market-card-hd">
+          <div class="market-icon" style="background:${coin.color}20;font-size:20px">${coin.e}</div>
+          <div style="flex:1"><div class="market-name">${coin.name}</div><div class="market-sym">${coin.sym} · #${live?.market_cap_rank||idx+1}</div></div>
+          <div style="text-align:right"><div style="font-size:.65rem;color:var(--t3)">Капитализация</div><div style="font-size:.75rem;font-weight:700;color:var(--t1)">$${mcap}</div></div>
+        </div>
+        <div class="market-price">$${priceStr}</div>
+        <span class="market-change ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(chgPct).toFixed(2)}%</span>
+        <div class="market-meta">${isUp?'+':'-'}$${fmtPrice(Math.abs(chg),price>=100?2:4)} за 24ч</div>
+        <div class="market-sparkline"><canvas id="cspark-${coin.id}" width="220" height="44"></canvas></div>
+        <div class="market-updated">${live?'🟢 Live · CoinGecko':'⚠️ Live недоступен · демо-цена'}${live?liveTs(cryptoLastTs):''}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="text-align:center;margin-top:14px;font-size:.68rem;color:var(--t3)">
+    ${isLive?'📡 Курсы, капитализация и график недели — реальные данные CoinGecko. Нажми «Обновить», чтобы подтянуть свежие цены.':'⚠️ Не удалось получить live-данные (нет соединения или лимит запросов) — показаны демо-значения. Нажми «Обновить», чтобы попробовать снова.'}
+  </div>`;
+
+  setTimeout(()=>{
+    CRYPTOS.forEach(coin=>{
+      const live=byId[coin.cg];
+      const hist=live?.sparkline_in_7d?.price?downsample(live.sparkline_in_7d.price,24):genHistory(coin.base,0.018,coin.id+'h');
+      const isUp=hist[hist.length-1]>=hist[0];
+      drawSparkline('cspark-'+coin.id,hist,isUp?'#34d399':'#f87171');
+    });
+    const btn=document.getElementById('refresh-crypto-btn');if(btn)btn.classList.remove('spinning');
+  },100);
+}
+
+/* ═══════════════════════════════════════════
+   ASSET DETAIL MODAL — клик по любой карточке открывает
+   крупный график («шкалу» цены) и статистику по активу
+═══════════════════════════════════════════ */
+let assetModalType=null,assetModalId=null,assetTf='7',assetChartCache={};
+
+function openAssetDetail(type,id){
+  assetModalType=type;assetModalId=id;assetTf='7';
+  document.getElementById('asset-modal').style.display='grid';
+  renderAssetModal();
+}
+function closeAssetModal(){
+  const m=document.getElementById('asset-modal');if(m)m.style.display='none';
+  assetModalType=null;assetModalId=null;
+}
+function setAssetTf(tf){assetTf=tf;renderAssetModal()}
+function renderAssetModal(){
+  if(assetModalType==='crypto')renderCryptoDetail();
+  else if(assetModalType)renderMarketDetail(assetModalType);
+}
+
+function renderCryptoDetail(){
+  const coin=CRYPTOS.find(c=>c.id===assetModalId);if(!coin)return;
+  const byId={};(cryptoLive?.markets||[]).forEach(m=>byId[m.id]=m);
+  const live=byId[coin.cg];
+  document.getElementById('asset-modal-title').textContent=coin.name;
+  const body=document.getElementById('asset-modal-body');
+
+  const price=live?live.current_price:genPrice(coin.base,0.025,coin.id);
+  const chgPct=live?(live.price_change_percentage_24h??0):0;
+  const isUp=chgPct>=0;
+  const priceStr='$'+(price>=100?fmtPrice(price,2):price>=1?fmtPrice(price,4):fmtPrice(price,6));
+  const altPrice=baseCurrency!=='USD'&&fxRates?`≈ ${fmtNum(usdTo(baseCurrency,price))} ${currInfo().sym}`:'';
+  const tfs=[{id:'1',l:'24Ч'},{id:'7',l:'7Д'},{id:'30',l:'30Д'},{id:'365',l:'1Г'}];
+
+  body.innerHTML=`
+    <div class="asset-hd">
+      <div class="asset-icon" style="background:${coin.color}20;font-size:26px">${coin.e}</div>
+      <div style="flex:1"><div class="asset-name">${coin.name}</div><div class="asset-sym">${coin.sym}${live?' · #'+live.market_cap_rank+' по капитализации':''}</div></div>
+      <div style="text-align:right"><div class="asset-price-big">${priceStr}</div>${altPrice?`<div style="font-size:.68rem;color:var(--t3)">${altPrice}</div>`:''}${live?`<span class="market-change ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(chgPct).toFixed(2)}%</span>`:''}</div>
+    </div>
+    <div class="asset-tf-tog">${tfs.map(t=>`<button class="asset-tf-btn ${assetTf===t.id?'on':''}" onclick="setAssetTf('${t.id}')">${t.l}</button>`).join('')}</div>
+    <div class="asset-chart-wrap"><canvas id="asset-chart-canvas"></canvas></div>
+    <div class="asset-chart-note" id="asset-chart-note">${live?'Загружаем график…':'⚠️ Live-данные недоступны — показана демо-цена и демо-график.'}</div>
+    ${live?`<div class="asset-stats-grid">
+      <div class="asset-stat"><div class="asset-stat-lbl">Капитализация</div><div class="asset-stat-val">$${fmtCompactUsd(live.market_cap)}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Объём 24ч</div><div class="asset-stat-val">$${fmtCompactUsd(live.total_volume)}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Макс. за 24ч</div><div class="asset-stat-val">$${fmtPrice(live.high_24h,live.high_24h>=1?2:6)}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Мин. за 24ч</div><div class="asset-stat-val">$${fmtPrice(live.low_24h,live.low_24h>=1?2:6)}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Исторический максимум</div><div class="asset-stat-val">$${fmtPrice(live.ath,live.ath>=1?2:6)}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">От максимума</div><div class="asset-stat-val" style="color:${live.ath_change_percentage>=0?'var(--green)':'var(--red)'}">${live.ath_change_percentage.toFixed(1)}%</div></div>
+    </div>`:''}
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px;margin-top:12px" onclick="openAddHoldingForm('crypto','${coin.id}')">💼 Добавить в портфель</button>`;
+
+  loadCryptoChart(coin,live);
+}
+async function loadCryptoChart(coin,live){
+  const note=document.getElementById('asset-chart-note');
+  const tfAtStart=assetTf,idAtStart=coin.id;
+  const cacheKey=coin.cg+'_'+tfAtStart;
+  let data=assetChartCache[cacheKey];
+  if(!data){
+    try{
+      const d=await fetchJSON(`https://api.coingecko.com/api/v3/coins/${coin.cg}/market_chart?vs_currency=usd&days=${tfAtStart}`);
+      data=d.prices;assetChartCache[cacheKey]=data;
+    }catch(e){data=null}
+  }
+  if(assetModalType!=='crypto'||assetModalId!==idAtStart||assetTf!==tfAtStart)return; // модалка сменилась, пока грузили
+  const noteEl=document.getElementById('asset-chart-note');
+  if(data&&data.length>1){
+    const vals=data.map(p=>p[1]),times=data.map(p=>p[0]);
+    drawBigChart('asset-chart-canvas',vals,times,vals[vals.length-1]>=vals[0]?'#34d399':'#f87171');
+    const tfLabel={1:'24 часа',7:'7 дней',30:'30 дней',365:'1 год'}[tfAtStart];
+    if(noteEl)noteEl.textContent=`📡 Реальный график CoinGecko за ${tfLabel}.`;
+  }else{
+    const hist=genHistory(coin.base,0.018,coin.id+'h'+tfAtStart,40);
+    drawBigChart('asset-chart-canvas',hist,null,'#94a3b8');
+    if(noteEl)noteEl.textContent='⚠️ Не удалось загрузить график (нет сети или лимит запросов CoinGecko) — показан демо-график.';
+  }
+}
+
+function renderMarketDetail(tab){
+  const items=tab==='metals'?METALS:tab==='oil'?OILS:getCurrencyPairs();
+  const item=items.find(i=>i.id===assetModalId);if(!item)return;
+  document.getElementById('asset-modal-title').textContent=item.name;
+  const body=document.getElementById('asset-modal-body');
+  const m=computeMarketItem(item,tab);
+  const unit=tab==='oil'?'$':currInfo().sym;
+  const isUp=m.chg>=0;
+  const priceStr=unit+fmtByMagnitude(m.price);
+  const hkey=(tab==='metals'?'m_':tab==='currency'?'c_':'')+item.id;
+  const fullHistRaw=tab!=='oil'?getPriceHistory(hkey):[];
+  const n=fullHistRaw.length;
+  const toBase=tab==='metals'?(v=>usdTo(baseCurrency,v)):(v=>v);
+
+  body.innerHTML=`
+    <div class="asset-hd">
+      <div class="asset-icon" style="background:${item.color}20;font-size:26px">${item.e}</div>
+      <div style="flex:1"><div class="asset-name">${item.name}</div><div class="asset-sym">${item.sym}</div></div>
+      <div style="text-align:right"><div class="asset-price-big">${priceStr}</div>${m.hasChange?`<span class="market-change ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(m.chgPct).toFixed(2)}%</span>`:''}</div>
+    </div>
+    <div class="asset-chart-wrap"><canvas id="asset-chart-canvas"></canvas></div>
+    <div class="asset-chart-note">${
+      tab==='oil'?'⚠️ Бесплатного live-источника для нефти и газа не нашлось — показан демо-график.':
+      n>=2?`📈 График построен из ${n} реальных котировок, накопленных прямо в этом приложении. Заходи и жми «Обновить» время от времени — график будет становиться подробнее.`:
+      '📈 Пока накоплено меньше двух точек — открывай вкладку «Рынки» и жми «Обновить» время от времени, здесь появится реальный график.'
+    }</div>
+    ${tab!=='oil'?`<button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px" onclick="openAddHoldingForm('${tab==='metals'?'metal':'currency'}','${tab==='metals'?item.id:item.code}')">💼 Добавить в портфель</button>`:''}`;
+
+  const chartVals=n>=2?fullHistRaw.map(p=>toBase(p.v)):m.hist;
+  const chartTimes=n>=2?fullHistRaw.map(p=>p.t):null;
+  const cUp=chartVals[chartVals.length-1]>=chartVals[0];
+  setTimeout(()=>drawBigChart('asset-chart-canvas',chartVals,chartTimes,cUp?'#34d399':'#f87171'),20);
+}
+
+/* --- крупный график с осями для детального окна --- */
+function drawBigChart(canvasId,vals,times,color){
+  const c=document.getElementById(canvasId);if(!c||!vals||!vals.length)return;
+  const W=c.parentElement.offsetWidth||520,H=c.parentElement.offsetHeight||220;
+  c.width=W*devicePixelRatio;c.height=H*devicePixelRatio;
+  const ctx=c.getContext('2d');ctx.setTransform(1,0,0,1,0,0);ctx.scale(devicePixelRatio,devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  const padL=56,padR=10,padT=10,padB=times?22:10;
+  const mn=Math.min(...vals),mx=Math.max(...vals);const range=(mx-mn)||mx*0.01||1;
+  const xp=i=>padL+i/(vals.length-1||1)*(W-padL-padR);
+  const yp=v=>padT+(H-padT-padB)-(v-mn)/range*(H-padT-padB);
+  const style=getComputedStyle(document.documentElement);
+  const gridColor=style.getPropertyValue('--border').trim()||'#333';
+  const textColor=style.getPropertyValue('--t3').trim()||'#888';
+  [mx,(mx+mn)/2,mn].forEach((v,i)=>{
+    const y=padT+i*(H-padT-padB)/2;
+    ctx.strokeStyle=gridColor;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
+    ctx.fillStyle=textColor;ctx.font='10px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+    ctx.fillText(fmtAxisVal(v),padL-8,y);
+  });
+  const g=ctx.createLinearGradient(0,padT,0,H-padB);g.addColorStop(0,color+'33');g.addColorStop(1,color+'00');
+  ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+  for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+  ctx.lineTo(xp(vals.length-1),H-padB);ctx.lineTo(xp(0),H-padB);ctx.closePath();ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.moveTo(xp(0),yp(vals[0]));
+  for(let i=1;i<vals.length;i++)ctx.lineTo(xp(i),yp(vals[i]));
+  ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.stroke();
+  ctx.beginPath();ctx.arc(xp(vals.length-1),yp(vals[vals.length-1]),3.2,0,7);ctx.fillStyle=color;ctx.fill();
+  if(times&&times.length>1){
+    const span=times[times.length-1]-times[0];
+    const fmtT=t=>{
+      const d=new Date(t);
+      return span<2*24*3600000?d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
+    };
+    ctx.fillStyle=textColor;ctx.font='9px Inter, sans-serif';ctx.textBaseline='top';
+    ctx.textAlign='left';ctx.fillText(fmtT(times[0]),padL,H-padB+6);
+    ctx.textAlign='right';ctx.fillText(fmtT(times[times.length-1]),W-padR,H-padB+6);
+    ctx.textAlign='center';ctx.fillText(fmtT(times[Math.floor(times.length/2)]),(padL+W-padR)/2,H-padB+6);
+  }
+}
+function fmtAxisVal(v){
+  if(v>=1000)return v.toLocaleString('en-US',{maximumFractionDigits:0});
+  if(v>=1)return v.toFixed(2);
+  return v.toFixed(4);
+}
+
+/* ═══════════════════════════════════════════
+   INSIGHTS
+═══════════════════════════════════════════ */
+function buildInsights(tx,inc,exp,bal){
+  const ins=[];
+  if(!tx.length)return[{t:'b',ic:'💡',title:'Начни отслеживать',text:'Добавь первую транзакцию, чтобы увидеть инсайты.'}];
+  const budgets=getBudgets();const bycat={};
+  tx.filter(t=>t.type==='expense').forEach(t=>{bycat[t.category]=(bycat[t.category]||0)+t.amount});
+  Object.entries(budgets).forEach(([id,lim])=>{
+    const s=bycat[id]||0;const cat=getCat(id);
+    if(s>lim)ins.push({t:'r',ic:'⚠️',title:`Бюджет «${cat.l}» превышен`,text:`Потрачено ${fmt(s)} при лимите ${fmt(lim)}.`});
+    else if(s>lim*.8)ins.push({t:'y',ic:'🔔',title:`«${cat.l}» на ${Math.round(s/lim*100)}%`,text:`Осталось ${fmt(lim-s)} из лимита.`});
+  });
+  const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length&&exp>0){const [tid,tamt]=sorted[0];const cat=getCat(tid);const pct=Math.round(tamt/exp*100);if(pct>35)ins.push({t:'b',ic:'💡',title:`«${cat.l}» — ${pct}% расходов`,text:'Крупнейшая статья. Попробуй установить лимит.'})}
+  if(inc>0){const r=Math.round(bal/inc*100);if(r>=20)ins.push({t:'g',ic:'🎉',title:'Отличная норма сбережений!',text:`Ты откладываешь ${r}% дохода — выше 20%.`});else if(r<0)ins.push({t:'r',ic:'📉',title:'Расходы превышают доходы',text:`Дефицит ${fmt(Math.abs(bal))}.`});else if(r<10)ins.push({t:'y',ic:'💰',title:'Низкая норма сбережений',text:`Только ${r}% дохода сохраняется.`})}
+  const smallThreshold=fxRates?Math.round(usdTo(baseCurrency,5)):500;
+  const small2=tx.filter(t=>t.type==='expense'&&t.amount<smallThreshold);
+  if(small2.length>12)ins.push({t:'b',ic:'🧾',title:'Много мелких трат',text:`${small2.length} транзакций до ${fmtNum(smallThreshold)} ${currInfo().sym} на ${fmt(small2.reduce((s,t)=>s+t.amount,0))}.`});
+  if(!ins.length)ins.push({t:'g',ic:'✅',title:'Всё под контролем',text:'Бюджеты соблюдаются, расходы в норме!'});
+  return ins.slice(0,5);
+}
+
+/* ═══════════════════════════════════════════
+   PROFILE PAGE
+═══════════════════════════════════════════ */
+let profileAv=null,twofaTimerInterval=null;
+function renderProfile(){
+  const u=currentUser;const full=u.name+(u.surname?' '+u.surname:'');
+  const joined=new Date(u.joinedAt).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+  const allTx=getTx();const saved=tInc(allTx)-tExp(allTx);
+  const months=[...new Set(allTx.map(t=>t.date.slice(0,7)))].length;
+  const avHTML=u.photo?`<img src="${u.photo}" alt="av"/>`:(u.avatar||'😊');
+  return`
+  <div class="profile-wrap">
+    <div class="profile-hero">
+      <div class="profile-av-big" onclick="document.getElementById('photo-file').click()">
+        ${avHTML}<div class="av-overlay">📷 Сменить</div>
+      </div>
+      <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="uploadPhoto(this)"/>
+      <div style="position:relative;z-index:1">
+        <div class="profile-name">${full}</div>
+        <div class="profile-email">${u.email}</div>
+        <div class="profile-joined">📅 С ${joined}</div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 11px;text-align:center"><div style="font-size:.95rem;font-weight:800;color:var(--t1)">${allTx.length}</div><div style="font-size:.58rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">транзакций</div></div>
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 11px;text-align:center"><div style="font-size:.95rem;font-weight:800;color:${saved>=0?'var(--green)':'var(--red)'}">${fmt(saved)}</div><div style="font-size:.58rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">сохранено</div></div>
+          <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 11px;text-align:center"><div style="font-size:.95rem;font-weight:800;color:var(--t1)">${months}</div><div style="font-size:.58rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">месяцев</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appearance -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Оформление</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:.8rem;font-weight:700;color:var(--t1)">Тема</div>
+          <div style="font-size:.65rem;color:var(--t3)">${isDark?'Тёмная':'Светлая'} — сохраняется для этого профиля</div>
+        </div>
+        <button class="btn btn-ghost" onclick="toggleTheme();if(curPage==='profile')render()">${isDark?'☀️ Светлая':'🌙 Тёмная'}</button>
+      </div>
+      <label class="flbl">Акцентный цвет</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        ${ACCENT_PRESETS.map(a=>`<button type="button" title="${a.name}" onclick="setAccent(${a.hue})" style="width:32px;height:32px;border-radius:50%;border:2px solid ${(u.accentHue||252)===a.hue?'var(--t1)':'transparent'};background:hsl(${a.hue},72%,56%);cursor:pointer;box-shadow:0 0 0 1px var(--border)"></button>`).join('')}
+      </div>
+    </div>
+
+    <!-- Currency -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Основная валюта</div>
+      <p style="font-size:.71rem;color:var(--t3);margin-bottom:10px">Валюта, в которой ведётся учёт транзакций, бюджетов и портфеля. При смене все текущие суммы будут пересчитаны по актуальному курсу.</p>
+      <div class="profile-form-grid">
+        <div class="fg span2">
+          <label class="flbl">Валюта</label>
+          <select class="finput" id="p-currency">
+            ${CURR_LIST.map(c=>`<option value="${c.code}" ${c.code===baseCurrency?'selected':''}>${c.sym} ${c.name} (${c.code})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div style="font-size:.63rem;color:var(--t3);margin-top:6px">${fxRates?`Курсы обновлены ${liveTs(fxRatesTs)||'только что'}.`:'Курсы ещё не загружены — подключись к интернету.'}</div>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="changeCurrency()">Сохранить валюту</button>
+    </div>
+
+    <!-- Personal info -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Личные данные</div>
+      <div class="profile-form-grid">
+        <div class="fg"><label class="flbl">Имя</label><input class="finput" type="text" id="p-name" value="${u.name||''}"/></div>
+        <div class="fg"><label class="flbl">Фамилия</label><input class="finput" type="text" id="p-surname" value="${u.surname||''}"/></div>
+        <div class="fg span2"><label class="flbl">Email</label><input class="finput" type="email" value="${u.email}" readonly style="opacity:.45;cursor:not-allowed"/><div style="font-size:.63rem;color:var(--t3);margin-top:3px">Email — идентификатор аккаунта, изменить нельзя</div></div>
+      </div>
+    </div>
+
+    <!-- Avatar -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Аватар и фото</div>
+      <div style="margin-bottom:10px">
+        <label class="flbl">Фото профиля</label>
+        <div class="photo-upload-area" onclick="document.getElementById('photo-file2').click()" ondragover="this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropPhoto(event)">
+          ${u.photo?`<img src="${u.photo}" class="photo-preview" alt="preview"/><div style="font-size:.72rem;color:var(--t3)">Нажми чтобы сменить фото</div>`:`<div style="font-size:1.8rem;margin-bottom:6px">📷</div><div style="font-size:.75rem;color:var(--t2);font-weight:600">Загрузи фото профиля</div><div style="font-size:.65rem;color:var(--t3);margin-top:3px">Перетащи или нажми · JPG, PNG, WebP до 2МБ</div>`}
+        </div>
+        <input type="file" id="photo-file2" accept="image/*" style="display:none" onchange="uploadPhoto(this)"/>
+        ${u.photo?`<button class="btn btn-danger" style="font-size:.7rem;margin-top:6px" onclick="removePhoto()">🗑 Удалить фото</button>`:''}
+      </div>
+      <label class="flbl">Эмодзи аватар</label>
+      <div class="av-pick" id="p-av-pick">
+        ${AVATARS.map(av=>`<button type="button" class="av-opt ${av===u.avatar?'sel':''}" onclick="selPAv('${av}',this)">${av}</button>`).join('')}
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Смена пароля</div>
+      <div class="profile-form-grid">
+        <div class="fg span2"><label class="flbl">Текущий пароль</label><input class="finput" type="password" id="p-old-pass" placeholder="••••••••"/></div>
+        <div class="fg"><label class="flbl">Новый пароль</label><input class="finput" type="password" id="p-new-pass" placeholder="Мин. 6 символов" oninput="checkStr(this.value,'p-sf','p-sl')"/><div class="strength-bar"><div class="strength-fill" id="p-sf" style="width:0"></div></div><div class="strength-lbl" id="p-sl"></div></div>
+        <div class="fg"><label class="flbl">Подтверждение</label><input class="finput" type="password" id="p-conf-pass" placeholder="Повтори пароль"/></div>
+      </div>
+      <div class="ferr" id="p-pass-err" style="margin-top:6px"><span>⚠</span><span></span></div>
+    </div>
+
+    <!-- 2FA -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Двухфакторная аутентификация</div>
+      <div class="twofa-setup">
+        <div class="twofa-status">
+          <span class="twofa-badge ${u.twofa?'twofa-on':'twofa-off'}">${u.twofa?'✅ Включена':'❌ Выключена'}</span>
+          <span style="font-size:.72rem;color:var(--t3)">При входе будет запрашиваться 6-значный код</span>
+        </div>
+        ${u.twofa?`
+          <div style="font-size:.72rem;color:var(--t2);margin-bottom:10px;line-height:1.5">Защита включена. При входе после пароля запрашивается код из приложения-аутентификатора.</div>
+          <button class="btn btn-danger" style="margin-top:4px;width:100%;justify-content:center" onclick="disable2FA()">Отключить 2FA</button>`
+        :`<div style="font-size:.72rem;color:var(--t3);margin-bottom:10px;line-height:1.5">После включения при каждом входе нужно будет вводить код из приложения (Google Authenticator и аналоги). Код обновляется каждые 30 секунд.</div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="enable2FA()">Включить 2FA</button>`}
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Экспорт данных</div>
+      <div class="export-grid">
+        <div class="export-card" onclick="exportCSV()"><div class="export-ico">📊</div><div class="export-name">CSV</div><div class="export-desc">Excel, Google Sheets</div></div>
+        <div class="export-card" onclick="exportJSON()"><div class="export-ico">📄</div><div class="export-name">JSON</div><div class="export-desc">Резервная копия</div></div>
+        <div class="export-card" onclick="exportTxt()"><div class="export-ico">📝</div><div class="export-name">Отчёт</div><div class="export-desc">Текстовый файл</div></div>
+      </div>
+    </div>
+
+    <!-- Danger zone -->
+    <div class="card" style="margin-bottom:14px;border-color:var(--red-br)">
+      <div class="ps-title" style="color:var(--red)">Опасная зона</div>
+      <div style="font-size:.72rem;color:var(--t3);margin-bottom:10px">Эти действия необратимы.</div>
+      <button class="btn btn-danger" onclick="clearAllData()">🗑 Удалить все транзакции</button>
+    </div>
+
+    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <button class="save-btn" onclick="saveProfile()">Сохранить изменения</button>
+      <button class="btn btn-ghost" onclick="doLogout()" style="color:var(--red);border-color:var(--red-br)">🚪 Выйти</button>
+    </div>
+  </div>`;
+}
+
+function selPAv(av,btn){profileAv=av;document.querySelectorAll('#p-av-pick .av-opt').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel')}
+
+function uploadPhoto(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>2*1024*1024){showToast('❌ Файл больше 2МБ',true);return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    // Файлового хранилища на бэкенде нет — фото храним локально, привязав к email.
+    currentUser.photo=e.target.result;
+    try{localStorage.setItem('ff_photo_'+currentUser.email,e.target.result)}catch{showToast('⚠ Фото слишком большое для локального хранения',true)}
+    updateAccountUI();showToast('📷 Фото обновлено (хранится только на этом устройстве)');render();
+  };
+  reader.readAsDataURL(file);
+}
+function dropPhoto(e){e.preventDefault();e.currentTarget.classList.remove('drag');const file=e.dataTransfer.files[0];if(file){const inp=document.getElementById('photo-file2');const dt=new DataTransfer();dt.items.add(file);inp.files=dt.files;uploadPhoto(inp)}}
+function removePhoto(){currentUser.photo=null;localStorage.removeItem('ff_photo_'+currentUser.email);updateAccountUI();showToast('🗑 Фото удалено');render()}
+
+async function enable2FA(){
+  const modal=document.getElementById('twofa-modal');
+  const body=document.getElementById('twofa-modal-body');
+  body.innerHTML='<div class="empty" style="padding:30px 0"><div class="empty-ico">⏳</div><div class="empty-t">Готовлю QR-код…</div></div>';
+  modal.style.display='grid';
+  try{
+    const s=await api('/api/me/2fa/setup',{method:'POST'});
+    body.innerHTML=`
+      <p style="font-size:.75rem;color:var(--t2);line-height:1.5;margin-bottom:10px">Отсканируй QR-код в Google Authenticator (или аналоге), затем введи 6-значный код для подтверждения.</p>
+      <div style="display:flex;justify-content:center;margin-bottom:10px"><img src="${s.qrDataUrl}" alt="QR" style="width:180px;height:180px;border-radius:10px;background:#fff;padding:6px"/></div>
+      <div style="font-size:.62rem;color:var(--t3);text-align:center;margin-bottom:12px;word-break:break-all">Ключ вручную: <code>${s.secret}</code></div>
+      <input class="finput" id="twofa-enable-code" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;letter-spacing:.4em;font-size:1.1rem"/>
+      <div class="ferr" id="twofa-enable-err" style="margin-top:6px"><span>⚠</span><span></span></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="confirmEnable2FA()">Подтвердить и включить</button>`;
+    setTimeout(()=>document.getElementById('twofa-enable-code')?.focus(),50);
+  }catch(e){
+    body.innerHTML=`<div class="ferr show"><span>⚠</span><span>${e.message||'Не удалось начать настройку 2FA'}</span></div>`;
+  }
+}
+async function confirmEnable2FA(){
+  const code=(document.getElementById('twofa-enable-code')?.value||'').trim();
+  const err=document.getElementById('twofa-enable-err');
+  if(code.length!==6){err.querySelector('span:last-child').textContent='Введи 6 цифр';err.classList.add('show');return}
+  try{
+    await api('/api/me/2fa/enable',{method:'POST',body:{code}});
+    currentUser.twofa=true;
+    closeTwofaModal();showToast('✅ 2FA включена');render();
+  }catch(e){
+    err.querySelector('span:last-child').textContent=e.status===401?'Неверный код':(e.message||'Ошибка');
+    err.classList.add('show');
+  }
+}
+async function disable2FA(){
+  const code=prompt('Введи текущий 6-значный код из приложения, чтобы отключить 2FA:');
+  if(code===null)return;
+  try{
+    await api('/api/me/2fa/disable',{method:'POST',body:{code:code.trim()}});
+    currentUser.twofa=false;
+    clearInterval(twofaTimerInterval);showToast('2FA отключена');render();
+  }catch(e){showToast(e.status===401?'❌ Неверный код':('❌ '+(e.message||e)),true)}
+}
+function closeTwofaModal(){const m=document.getElementById('twofa-modal');if(m)m.style.display='none'}
+
+async function changeCurrency(){
+  const sel=document.getElementById('p-currency');if(!sel)return;
+  const newCur=sel.value;
+  if(newCur===baseCurrency){showToast('Валюта не изменилась');return}
+  if(!fxRates)await ensureFxRates();
+  if(!fxRates){showToast('❌ Нет курсов валют — проверь интернет-соединение',true);return}
+  const rate=crossRate(baseCurrency,newCur);
+  if(!confirm(`Сменить основную валюту на ${newCur}?\n\nВсе суммы транзакций и бюджетов будут пересчитаны по текущему курсу (1 ${baseCurrency} ≈ ${rate.toFixed(4)} ${newCur}). Транзакции будут перезаписаны на сервере.`))return;
+  showToast('⏳ Пересчёт сумм…');
+  try{
+    // 1) пересчитанные транзакции: пересоздаём на сервере (bulk-update в API нет)
+    const converted=store.tx.map(t=>({type:t.type,amount:+(t.amount*rate).toFixed(2),category:t.category,note:t.note||undefined,date:t.date}));
+    await api('/api/transactions',{method:'DELETE'});
+    for(const t of converted)await api('/api/transactions',{method:'POST',body:t});
+    store.tx=(await api('/api/transactions')).transactions||[];
+    // 2) бюджеты
+    const newBud={};Object.entries(store.budgets).forEach(([k,v])=>newBud[k]=+(v*rate).toFixed(2));
+    if(Object.keys(newBud).length)await api('/api/budgets',{method:'PUT',body:newBud});
+    store.budgets=newBud;
+    // 3) валюта профиля
+    await api('/api/me',{method:'PATCH',body:{currency:newCur}});
+    currentUser.currency=newCur;
+    baseCurrency=newCur;mktLive={};
+    showToast('✅ Валюта изменена на '+newCur);
+    render();
+  }catch(e){
+    showToast('❌ Ошибка при смене валюты: '+(e.message||e),true);
+    try{await loadAllData()}catch{}
+    render();
+  }
+}
+async function saveProfile(){
+  const name=document.getElementById('p-name')?.value.trim();
+  const surname=document.getElementById('p-surname')?.value.trim();
+  const oldPass=document.getElementById('p-old-pass')?.value;
+  const newPass=document.getElementById('p-new-pass')?.value;
+  const confPass=document.getElementById('p-conf-pass')?.value;
+  const errEl=document.getElementById('p-pass-err');if(errEl)errEl.classList.remove('show');
+  const setErr=m=>{if(errEl){errEl.querySelector('span:last-child').textContent=m;errEl.classList.add('show')}};
+
+  // 1) смена пароля (если поля заполнены)
+  if(oldPass||newPass||confPass){
+    if(!oldPass)return setErr('Введи текущий пароль');
+    if((newPass||'').length<6)return setErr('Минимум 6 символов');
+    if(newPass!==confPass)return setErr('Пароли не совпадают');
+    try{
+      await api('/api/me/password',{method:'POST',body:{oldPassword:oldPass,newPassword:newPass}});
+    }catch(e){return setErr(e.status===401?'Неверный текущий пароль':(e.message||'Ошибка смены пароля'))}
+    ['p-old-pass','p-new-pass','p-conf-pass'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  }
+
+  // 2) имя / фамилия / аватар
+  const fields={};
+  if(name&&name!==currentUser.name)fields.name=name;
+  if((surname||'')!==(currentUser.surname||''))fields.surname=surname||null;
+  if(profileAv&&profileAv!==currentUser.avatar)fields.avatar=profileAv;
+  try{
+    if(Object.keys(fields).length){
+      const r=await api('/api/me',{method:'PATCH',body:fields});
+      currentUser=mapUser(r.user);
+    }
+    profileAv=null;
+    updateAccountUI();showToast('✅ Профиль обновлён');render();
+  }catch(e){showToast('❌ Не удалось сохранить профиль: '+(e.message||e),true)}
+}
+async function clearAllData(){
+  if(!confirm('Удалить все транзакции? Это действие необратимо.'))return;
+  try{
+    await api('/api/transactions',{method:'DELETE'});
+    store.tx=[];render();showToast('🗑 Все транзакции удалены');
+  }catch(e){showToast('❌ Не удалось: '+(e.message||e),true)}
+}
+
+/* ═══════════════════════════════════════════
+   EXPORT
+═══════════════════════════════════════════ */
+function dlFile(name,content,mime){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=name;a.click();URL.revokeObjectURL(a.href);
+}
+function exportCSV(){
+  const tx=getTx();if(!tx.length){showToast('❌ Нет данных для экспорта',true);return}
+  const rows=[['Дата','Тип','Категория','Сумма','Заметка'],...tx.map(t=>[t.date,t.type==='income'?'Доход':'Расход',getCat(t.category).l,t.amount,t.note||''])];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlFile(`finflow_${new Date().toISOString().slice(0,10)}.csv`,'\uFEFF'+csv,'text/csv;charset=utf-8');
+  showToast('📊 CSV экспортирован');
+}
+function exportJSON(){
+  const data={user:{name:currentUser.name,email:currentUser.email},transactions:getTx(),budgets:getBudgets(),exportedAt:new Date().toISOString()};
+  dlFile(`finflow_backup_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2),'application/json');
+  showToast('📄 JSON экспортирован');
+}
+function exportTxt(){
+  const tx=getTx();if(!tx.length){showToast('❌ Нет данных',true);return}
+  const inc=tInc(tx),exp=tExp(tx);
+  const lines=[`FinFlow — Финансовый отчёт`,`Пользователь: ${currentUser.name} (${currentUser.email})`,`Дата экспорта: ${new Date().toLocaleDateString('ru-RU')}`,``,`ИТОГО: ${tx.length} транзакций`,`Доходы: ${fmt(inc)}`,`Расходы: ${fmt(exp)}`,`Баланс: ${fmt(inc-exp)}`,``,`— ТРАНЗАКЦИИ —`,...tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>`${t.date}  ${t.type==='income'?'+':'−'}${fmt(t.amount).padStart(14)}  ${getCat(t.category).l.padEnd(14)} ${t.note||''}`)];
+  dlFile(`finflow_report_${new Date().toISOString().slice(0,10)}.txt`,lines.join('\n'),'text/plain;charset=utf-8');
+  showToast('📝 Отчёт экспортирован');
+}
+
+/* ═══════════════════════════════════════════
+   ADD / BUDGET MODALS
+═══════════════════════════════════════════ */
+function openAddModal(){
+  setType('expense');
+  document.getElementById('f-amount').value='';
+  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-note').value='';
+  const curEl=document.getElementById('f-amount-cur');if(curEl)curEl.textContent=currInfo().sym;
+  document.getElementById('add-modal').style.display='grid';
+  setTimeout(()=>document.getElementById('f-amount').focus(),50);
+}
+function closeAddModal(){document.getElementById('add-modal').style.display='none'}
+function setType(t){
+  addType=t;
+  document.getElementById('btn-income').className='type-btn'+(t==='income'?' ti':'');
+  document.getElementById('btn-expense').className='type-btn'+(t==='expense'?' te':'');
+  addCat=t==='income'?'salary':'food';buildCatGrid(t);
+}
+function buildCatGrid(t){
+  const cats=t==='income'?CATS.filter(c=>INC.includes(c.id)):EXP_CATS;
+  document.getElementById('cat-grid').innerHTML=cats.map(c=>`<button class="cat-btn ${addCat===c.id?'cs':''}" onclick="selCat('${c.id}')"><span class="ce">${c.e}</span>${c.l}</button>`).join('');
+}
+function selCat(id){addCat=id;buildCatGrid(addType)}
+async function submitTx(){
+  const amt=parseFloat(document.getElementById('f-amount').value.replace(',','.'));if(!amt||amt<=0)return;
+  const payload={type:addType,amount:amt,category:addCat,note:document.getElementById('f-note').value.trim()||undefined,date:document.getElementById('f-date').value};
+  closeAddModal();
+  try{
+    const r=await api('/api/transactions',{method:'POST',body:payload});
+    store.tx.unshift(r.transaction);
+    render();
+  }catch(e){showToast('❌ Не удалось добавить: '+(e.message||e),true)}
+}
+async function deleteTx(id){
+  const prev=store.tx;
+  store.tx=store.tx.filter(t=>t.id!==id);render();
+  try{await api('/api/transactions/'+id,{method:'DELETE'})}
+  catch(e){store.tx=prev;render();showToast('❌ Не удалось удалить: '+(e.message||e),true)}
+}
+
+function openBudgetModal(){
+  const b=getBudgets();
+  document.getElementById('bud-setup').innerHTML=EXP_CATS.map(c=>`<div class="bsr"><span class="bsr-ico">${c.e}</span><span class="bsr-name">${c.l}</span><input class="bsr-input" type="number" min="0" step="any" placeholder="—" id="bud-${c.id}" value="${b[c.id]||''}"><span class="bsr-cur">${currInfo().sym}</span></div>`).join('');
+  document.getElementById('bud-modal').style.display='grid';
+}
+function closeBudgetModal(){document.getElementById('bud-modal').style.display='none'}
+async function saveBudgets(){
+  const out={};EXP_CATS.forEach(c=>{const v=parseFloat(document.getElementById('bud-'+c.id)?.value||'');if(v>0)out[c.id]=v});
+  closeBudgetModal();
+  try{
+    await api('/api/budgets',{method:'PUT',body:out});
+    store.budgets=out;render();showToast('✅ Бюджеты сохранены');
+  }catch(e){showToast('❌ Не удалось сохранить бюджеты: '+(e.message||e),true)}
+}
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+let _tt=null;
+function showToast(msg,isErr=false){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast'+(isErr?' err':'');t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+/* ═══════════════════════════════════════════
+   ПОРТФЕЛЬ — крипта / металлы / валюта (кэш) / акции
+   Лоты хранят цену в исходной валюте покупки (lot.cur) — при отображении
+   всегда конвертируются в текущую baseCurrency по актуальному курсу.
+   Для акций живого источника без ключа нет — цена обновляется вручную.
+═══════════════════════════════════════════ */
+function getPortfolio(){return store.portfolio}
+function findHolding(list,type,assetId){return list.find(h=>h.type===type&&h.assetId===assetId)}
+
+let holdingCtx={type:null,assetId:null};
+function openAddHoldingForm(type,assetId){
+  holdingCtx={type:type||null,assetId:assetId||null};
+  document.getElementById('holding-modal').style.display='grid';
+  renderHoldingForm();
+}
+function closeHoldingModal(){const m=document.getElementById('holding-modal');if(m)m.style.display='none'}
+
+/* текущая рыночная цена актива в baseCurrency (null, если неизвестна) */
+function getCurrentPriceInfo(type,assetId){
+  if(type==='crypto'){
+    const coin=CRYPTOS.find(c=>c.id===assetId);if(!coin)return null;
+    const byId={};(cryptoLive?.markets||[]).forEach(m=>byId[m.id]=m);
+    const live=byId[coin.cg];
+    const priceUsd=live?live.current_price:genPrice(coin.base,0.025,coin.id);
+    return{price:usdTo(baseCurrency,priceUsd),name:coin.name,sym:coin.sym,e:coin.e,color:coin.color};
+  }
+  if(type==='metal'){
+    const m=METALS.find(x=>x.id===assetId);if(!m)return null;
+    const liveInfo=mktLive.metals;const raw=liveInfo?liveInfo.data[assetId]:null;
+    const priceUsd=raw!=null?raw:genPrice(m.base,0.015,m.id);
+    return{price:usdTo(baseCurrency,priceUsd),name:m.name,sym:m.sym,e:m.e,color:m.color};
+  }
+  if(type==='currency'){
+    const c=CURRENCY_MAJORS.find(x=>x.code===assetId);if(!c)return null;
+    return{price:crossRate(assetId,baseCurrency)||1,name:c.name,sym:assetId+'/'+baseCurrency,e:c.e,color:c.color};
+  }
+  return null;
+}
+
+function renderHoldingForm(){
+  const body=document.getElementById('holding-modal-body');if(!body)return;
+  const{type,assetId}=holdingCtx;
+  const preset=type&&assetId?getCurrentPriceInfo(type,assetId):null;
+  const existing=type&&assetId?findHolding(getPortfolio(),type,assetId):null;
+  const typeOptions=[{id:'crypto',l:'₿ Крипта'},{id:'metal',l:'🥇 Металл'},{id:'currency',l:'💱 Валюта'},{id:'stock',l:'📈 Акция'}];
+
+  const pickerHtml=type?'':`
+    <div style="margin-bottom:11px"><label class="flbl">Тип актива</label>
+      <select class="finput" id="h-type" onchange="renderHoldingAssetPicker()">
+        ${typeOptions.map(t=>`<option value="${t.id}">${t.l}</option>`).join('')}
+      </select>
+    </div>
+    <div id="h-asset-picker"></div>`;
+
+  body.innerHTML=`
+    ${type&&preset?`<div class="asset-hd" style="margin-bottom:14px">
+      <div class="asset-icon" style="background:${preset.color}20;font-size:22px">${preset.e}</div>
+      <div style="flex:1"><div class="asset-name">${preset.name}</div><div class="asset-sym">${preset.sym}${existing?' · уже в портфеле':''}</div></div>
+      <div style="text-align:right"><div style="font-size:.65rem;color:var(--t3)">Текущая цена</div><div style="font-size:.8rem;font-weight:700;color:var(--t1)">${fmtNum(preset.price)} ${currInfo().sym}</div></div>
+    </div>`:''}
+    ${pickerHtml}
+    <div id="h-stock-fields" style="display:none;margin-bottom:11px">
+      <div class="profile-form-grid">
+        <div class="fg"><label class="flbl">Тикер</label><input class="finput" type="text" id="h-stock-sym" placeholder="AAPL" maxlength="12"/></div>
+        <div class="fg"><label class="flbl">Название</label><input class="finput" type="text" id="h-stock-name" placeholder="Apple Inc."/></div>
+      </div>
+      <p style="font-size:.62rem;color:var(--t3);margin-top:4px">⚠️ Бесплатного live-источника цен акций без ключа нет — текущую цену нужно будет иногда обновлять вручную (кнопка «Обновить цену» на карточке).</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px">
+      <div><label class="flbl">Количество</label><input class="finput" type="number" min="0" step="any" id="h-qty" placeholder="0"/></div>
+      <div><label class="flbl">Цена за штуку</label><input class="finput" type="number" min="0" step="any" id="h-price" value="${preset?preset.price.toFixed(preset.price<1?6:2):''}" placeholder="0"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+      <div><label class="flbl">Валюта цены</label>
+        <select class="finput" id="h-cur">${CURR_LIST.map(c=>`<option value="${c.code}" ${c.code===baseCurrency?'selected':''}>${c.code}</option>`).join('')}</select>
+      </div>
+      <div><label class="flbl">Дата покупки</label><input class="finput" type="date" id="h-date" value="${new Date().toISOString().slice(0,10)}"/></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="submitHolding()">${existing?'➕ Добавить покупку':'💼 Добавить в портфель'}</button>
+  `;
+  if(!type)renderHoldingAssetPicker();
+}
+function renderHoldingAssetPicker(){
+  const sel=document.getElementById('h-type');if(!sel)return;
+  const type=sel.value;
+  const picker=document.getElementById('h-asset-picker');
+  const stockFields=document.getElementById('h-stock-fields');
+  if(stockFields)stockFields.style.display=type==='stock'?'block':'none';
+  if(type==='stock'){if(picker)picker.innerHTML='';return}
+  const list=type==='crypto'?CRYPTOS:type==='metal'?METALS:CURRENCY_MAJORS.filter(c=>c.code!==baseCurrency);
+  const idField=type==='currency'?'code':'id';
+  if(!picker)return;
+  picker.innerHTML=`<div style="margin-bottom:11px"><label class="flbl">Актив</label>
+    <select class="finput" id="h-asset" onchange="onHoldingAssetChange()">
+      ${list.map(x=>`<option value="${x[idField]}">${x.e} ${x.name}</option>`).join('')}
+    </select>
+  </div>`;
+  onHoldingAssetChange();
+}
+function onHoldingAssetChange(){
+  const type=document.getElementById('h-type')?.value;
+  const assetSel=document.getElementById('h-asset');
+  const priceEl=document.getElementById('h-price');
+  if(!assetSel||!priceEl)return;
+  const info=getCurrentPriceInfo(type,assetSel.value);
+  if(info)priceEl.value=info.price.toFixed(info.price<1?6:2);
+}
+async function submitHolding(){
+  let{type,assetId}=holdingCtx;
+  if(!type)type=document.getElementById('h-type')?.value;
+  let name,sym,e,color;
+  if(type==='stock'){
+    sym=(document.getElementById('h-stock-sym')?.value||'').trim().toUpperCase();
+    name=(document.getElementById('h-stock-name')?.value||'').trim()||sym;
+    if(!sym){showToast('❌ Укажи тикер акции',true);return}
+    assetId=sym;e='📈';color='#22c55e';
+  }else{
+    if(!assetId)assetId=document.getElementById('h-asset')?.value;
+    const info=getCurrentPriceInfo(type,assetId);
+    if(!info){showToast('❌ Не удалось определить актив',true);return}
+    name=info.name;sym=info.sym;e=info.e;color=info.color;
+  }
+  const qty=parseFloat(document.getElementById('h-qty').value);
+  const price=parseFloat(document.getElementById('h-price').value);
+  const cur=document.getElementById('h-cur').value;
+  const date=document.getElementById('h-date').value;
+  if(!qty||qty<=0){showToast('❌ Укажи количество',true);return}
+  if(!price||price<0){showToast('❌ Укажи цену',true);return}
+
+  const existing=findHolding(getPortfolio(),type,assetId);
+  closeHoldingModal();closeAssetModal();
+  try{
+    if(existing){
+      await api('/api/portfolio/holdings/'+existing.id+'/lots',{method:'POST',body:{qty,price,cur,date}});
+      if(type==='stock')await api('/api/portfolio/holdings/'+existing.id+'/price',{method:'PATCH',body:{price,cur}});
+    }else{
+      await api('/api/portfolio/holdings',{method:'POST',body:{type,assetId,name,sym,icon:e,color,lot:{qty,price,cur,date}}});
+    }
+    await reloadPortfolio();
+    showToast('✅ Добавлено в портфель');
+    if(curPage==='portfolio')render();
+  }catch(err){showToast('❌ Не удалось добавить: '+(err.message||err),true)}
+}
+async function updateStockPrice(hid){
+  const h=getPortfolio().find(x=>x.id===hid);if(!h)return;
+  const val=prompt(`Текущая цена «${h.name}» (${h.sym}) в ${h.manualPriceCur||baseCurrency}:`,h.manualPrice||'');
+  if(val===null)return;
+  const p=parseFloat(val.replace(',','.'));
+  if(!p||p<0){showToast('❌ Некорректная цена',true);return}
+  try{
+    await api('/api/portfolio/holdings/'+hid+'/price',{method:'PATCH',body:{price:p,cur:h.manualPriceCur||baseCurrency}});
+    await reloadPortfolio();showToast('✅ Цена обновлена');render();
+  }catch(e){showToast('❌ Не удалось обновить цену: '+(e.message||e),true)}
+}
+async function deleteLot(hid,lid){
+  if(!confirm('Удалить эту покупку?'))return;
+  try{
+    await api('/api/portfolio/lots/'+lid,{method:'DELETE'});
+    await reloadPortfolio();
+    if(!getPortfolio().some(x=>x.id===hid))closeHoldingDetail();
+    render();
+  }catch(e){showToast('❌ Не удалось удалить: '+(e.message||e),true)}
+}
+async function deleteHolding(hid){
+  if(!confirm('Удалить весь актив из портфеля вместе со всей историей покупок?'))return;
+  try{
+    await api('/api/portfolio/holdings/'+hid,{method:'DELETE'});
+    await reloadPortfolio();
+    closeHoldingDetail();render();
+  }catch(e){showToast('❌ Не удалось удалить: '+(e.message||e),true)}
+}
+
+/* --- расчёт стоимости и P&L холдинга в baseCurrency --- */
+function calcHolding(h){
+  const info=h.type==='stock'?null:getCurrentPriceInfo(h.type,h.assetId);
+  let currentPrice;
+  if(h.type==='stock'){
+    currentPrice=h.manualPrice!=null?convertAmount(h.manualPrice,h.manualPriceCur||baseCurrency,baseCurrency):0;
+  }else{
+    currentPrice=info?info.price:0;
+  }
+  const qty=h.lots.reduce((s,l)=>s+l.qty,0);
+  const costBasis=h.lots.reduce((s,l)=>s+convertAmount(l.price,l.cur,baseCurrency)*l.qty,0);
+  const value=currentPrice*qty;
+  const pnl=value-costBasis;
+  const pnlPct=costBasis>0?pnl/costBasis*100:0;
+  const avgPrice=qty>0?costBasis/qty:0;
+  return{qty,costBasis,value,pnl,pnlPct,avgPrice,currentPrice,priceKnown:h.type!=='stock'||h.manualPrice!=null};
+}
+
+function renderPortfolio(el){
+  const port=getPortfolio();
+  if(!port.length){
+    el.innerHTML=`
+      <div class="empty" style="padding:60px 0">
+        <div class="empty-ico">💼</div>
+        <div class="empty-t">Портфель пуст</div>
+        <p style="font-size:.75rem;color:var(--t3);margin:8px 0 16px">Добавляй активы прямо со страниц «Криптовалюты» и «Рынки» (кнопка «Добавить в портфель»), либо создай запись здесь.</p>
+        <button class="btn btn-primary" onclick="openAddHoldingForm()">💼 Добавить актив</button>
+      </div>`;
+    return;
+  }
+  const calcs=port.map(h=>({h,c:calcHolding(h)}));
+  const totalValue=calcs.reduce((s,x)=>s+x.c.value,0);
+  const totalCost=calcs.reduce((s,x)=>s+x.c.costBasis,0);
+  const totalPnl=totalValue-totalCost;
+  const totalPnlPct=totalCost>0?totalPnl/totalCost*100:0;
+  const isUp=totalPnl>=0;
+
+  const byType={crypto:'#f59e0b',metal:'#94a3b8',currency:'#3b82f6',stock:'#22c55e'};
+  const typeLabels={crypto:'Крипта',metal:'Металлы',currency:'Валюта',stock:'Акции'};
+  const allocMap={};
+  calcs.forEach(({h,c})=>{allocMap[h.type]=(allocMap[h.type]||0)+c.value});
+  const allocEntries=Object.entries(allocMap).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+
+  el.innerHTML=`
+  <div class="markets-header">
+    <div class="markets-title">Портфель</div>
+    <button class="refresh-btn" onclick="refreshPortfolio()" id="refresh-port-btn"><span class="r-ico">↺</span> Обновить</button>
+  </div>
+
+  <div class="port-hero">
+    <div class="port-hero-card"><div class="port-hero-lbl">Стоимость портфеля</div><div class="port-hero-val">${fmtNum(totalValue)} ${currInfo().sym}</div></div>
+    <div class="port-hero-card"><div class="port-hero-lbl">Вложено</div><div class="port-hero-val">${fmtNum(totalCost)} ${currInfo().sym}</div></div>
+    <div class="port-hero-card"><div class="port-hero-lbl">Прибыль / убыток</div><div class="port-hero-val" style="color:${isUp?'var(--green)':'var(--red)'}">${isUp?'+':'−'}${fmtNum(Math.abs(totalPnl))} ${currInfo().sym}</div><div class="port-hero-sub" style="color:${isUp?'var(--green)':'var(--red)'}">${isUp?'▲':'▼'} ${Math.abs(totalPnlPct).toFixed(2)}%</div></div>
+  </div>
+
+  ${totalValue>0?`
+  <div class="port-alloc">${allocEntries.map(([t,v])=>`<div class="port-alloc-seg" style="width:${(v/totalValue*100).toFixed(2)}%;background:${byType[t]}"></div>`).join('')}</div>
+  <div class="port-alloc-legend">${allocEntries.map(([t,v])=>`<div class="port-alloc-item"><span class="port-alloc-dot" style="background:${byType[t]}"></span>${typeLabels[t]} · ${(v/totalValue*100).toFixed(0)}%</div>`).join('')}</div>
+  `:''}
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="ps-title" style="margin-bottom:0;padding-bottom:0;border:none">Активы</div>
+    <button class="btn btn-ghost" style="font-size:.72rem" onclick="openAddHoldingForm()">+ Добавить актив</button>
+  </div>
+  ${calcs.map(({h,c})=>`
+    <div class="port-row" onclick="openHoldingDetail('${h.id}')">
+      <div class="port-row-ico" style="background:${h.color}20;font-size:18px">${h.e}</div>
+      <div style="flex:1">
+        <div class="port-row-name">${h.name}</div>
+        <div class="port-row-sub">${fmtNum(c.qty)} ${h.sym}${!c.priceKnown?' · цена не задана':''}</div>
+      </div>
+      <div class="port-row-val">
+        <div class="port-row-amt">${fmtNum(c.value)} ${currInfo().sym}</div>
+        ${c.costBasis>0?`<div class="port-row-pnl" style="color:${c.pnl>=0?'var(--green)':'var(--red)'}">${c.pnl>=0?'▲':'▼'} ${Math.abs(c.pnlPct).toFixed(2)}%</div>`:''}
+      </div>
+    </div>`).join('')}
+  `;
+}
+async function refreshPortfolio(){
+  const btn=document.getElementById('refresh-port-btn');if(btn)btn.classList.add('spinning');
+  try{
+    await Promise.all([
+      (async()=>{const d=await fetchCryptoLive();cryptoLive=d;cryptoLastTs=Date.now()})(),
+      (async()=>{const data=await fetchMetalsLive();mktLive.metals={data,ts:Date.now()}})(),
+      ensureFxRates(true)
+    ]);
+  }catch(e){/* используем то, что уже есть в кэше */}
+  if(btn)btn.classList.remove('spinning');
+  if(curPage==='portfolio')render();
+  showToast('📊 Портфель обновлён');
+}
+
+/* --- детальный просмотр холдинга: список покупок (лотов) --- */
+function openHoldingDetail(hid){
+  const port=getPortfolio();const h=port.find(x=>x.id===hid);if(!h)return;
+  const c=calcHolding(h);
+  document.getElementById('asset-modal-title').textContent=h.name;
+  const body=document.getElementById('asset-modal-body');
+  body.innerHTML=`
+    <div class="asset-hd">
+      <div class="asset-icon" style="background:${h.color}20;font-size:26px">${h.e}</div>
+      <div style="flex:1"><div class="asset-name">${h.name}</div><div class="asset-sym">${h.sym} · ${fmtNum(c.qty)} шт.</div></div>
+      <div style="text-align:right"><div class="asset-price-big">${fmtNum(c.value)} ${currInfo().sym}</div>${c.costBasis>0?`<span class="market-change ${c.pnl>=0?'up':'dn'}">${c.pnl>=0?'▲':'▼'} ${Math.abs(c.pnlPct).toFixed(2)}%</span>`:''}</div>
+    </div>
+    <div class="asset-stats-grid" style="margin-bottom:15px">
+      <div class="asset-stat"><div class="asset-stat-lbl">Средняя цена покупки</div><div class="asset-stat-val">${fmtNum(c.avgPrice)} ${currInfo().sym}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Текущая цена</div><div class="asset-stat-val">${c.priceKnown?fmtNum(c.currentPrice)+' '+currInfo().sym:'не задана'}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Вложено</div><div class="asset-stat-val">${fmtNum(c.costBasis)} ${currInfo().sym}</div></div>
+      <div class="asset-stat"><div class="asset-stat-lbl">Прибыль/убыток</div><div class="asset-stat-val" style="color:${c.pnl>=0?'var(--green)':'var(--red)'}">${c.pnl>=0?'+':'−'}${fmtNum(Math.abs(c.pnl))} ${currInfo().sym}</div></div>
+    </div>
+    ${h.type==='stock'?`<button class="btn btn-ghost" style="width:100%;justify-content:center;margin-bottom:12px" onclick="updateStockPrice('${h.id}')">✏️ Обновить текущую цену</button>`:''}
+    <div class="ps-title">История покупок</div>
+    ${h.lots.map(l=>`<div class="lot-row">
+      <div>${l.date} · ${fmtNum(l.qty)} шт. по ${fmtNum(l.price)} ${l.cur}</div>
+      <button class="lot-del" onclick="deleteLot('${h.id}','${l.id}')">🗑</button>
+    </div>`).join('')}
+    <div style="display:flex;gap:9px;margin-top:14px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="closeAssetModal();openAddHoldingForm('${h.type}','${h.assetId}')">➕ Докупить</button>
+      <button class="btn btn-danger" onclick="deleteHolding('${h.id}')">🗑 Удалить актив</button>
+    </div>
+  `;
+  document.getElementById('asset-modal').style.display='grid';
+  assetModalType='holding';assetModalId=h.id;
+}
+function closeHoldingDetail(){closeAssetModal()}
+
+
+/* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal()}
+  if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
+  if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
+    if(document.getElementById('form-login').style.display!=='none')doLogin();
+    else if(document.getElementById('form-reg').style.display!=='none')doRegister();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   INIT — восстановление сессии
+   Есть access-токен → проверяем через GET /api/me.
+   Нет / протух → пробуем refresh по httpOnly-cookie.
+   Не вышло → остаёмся на экране входа.
+═══════════════════════════════════════════ */
+(async function(){
+  try{
+    if(!accessToken){
+      const ok=await tryRefresh();
+      if(!ok)return;
+    }
+    const {user}=await api('/api/me');
+    currentUser=mapUser(user);
+    await enterApp();
+  }catch(e){
+    setAccessToken(null);
+    // тихо остаёмся на экране авторизации
+  }
+})();
+</script>
+</body>
+</html>
