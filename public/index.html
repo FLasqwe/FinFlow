@@ -787,6 +787,12 @@ canvas { display: block; max-width: 100%; }
 }
 .tx-item:hover .tx-del { opacity: 1; }
 .tx-del:hover { color: var(--red); background: var(--red-b); }
+.wl-act {
+  background: var(--card2, rgba(128,128,128,.12)); border: 1px solid var(--border);
+  color: var(--t2); cursor: pointer; font-size: 0.66rem; font-weight: 700;
+  padding: 4px 9px; border-radius: var(--r1); transition: color .12s, background .12s;
+}
+.wl-act:hover { color: var(--t1); background: rgba(128,128,128,.22); }
 
 /* ═══════════════════════════════════════════════════════
    BUDGETS
@@ -1435,6 +1441,7 @@ canvas { display: block; max-width: 100%; }
       <button class="nav-btn on" data-page="dashboard" onclick="goPage('dashboard')"><span class="nav-ico">◈</span>Дашборд</button>
       <button class="nav-btn" data-page="transactions" onclick="goPage('transactions')"><span class="nav-ico">↕</span>Транзакции<span class="nav-badge" id="tx-badge" style="display:none">0</span></button>
       <button class="nav-btn" data-page="accounts" onclick="goPage('accounts')"><span class="nav-ico">▤</span>Счета</button>
+      <button class="nav-btn" data-page="wallets" onclick="goWallets()"><span class="nav-ico">🪙</span>Кошельки</button>
       <button class="nav-btn" data-page="budgets" onclick="goPage('budgets')"><span class="nav-ico">◎</span>Бюджеты</button>
       <button class="nav-btn" data-page="recurring" onclick="goPage('recurring')"><span class="nav-ico">↻</span>Регулярные</button>
       <button class="nav-btn" data-page="goals" onclick="goPage('goals')"><span class="nav-ico">◎</span>Цели</button>
@@ -1522,6 +1529,7 @@ canvas { display: block; max-width: 100%; }
 <div class="sheet" id="more-sheet" hidden onclick="if(event.target===this)closeMoreSheet()">
   <div class="sheet-panel">
     <div class="sheet-grip"></div>
+    <button class="sheet-item" data-page="wallets" onclick="goWallets()"><span class="si-ico">🪙</span>Крипто-кошельки</button>
     <button class="sheet-item" data-page="budgets" onclick="moreGo('budgets')"><span class="si-ico">◎</span>Бюджеты</button>
     <button class="sheet-item" data-page="recurring" onclick="moreGo('recurring')"><span class="si-ico">↻</span>Регулярные</button>
     <button class="sheet-item" data-page="goals" onclick="moreGo('goals')"><span class="si-ico">◎</span>Цели</button>
@@ -1670,6 +1678,14 @@ canvas { display: block; max-width: 100%; }
   </div>
 </div>
 
+<!-- WALLET MODAL -->
+<div class="overlay" id="wallet-modal" style="display:none" onclick="if(event.target===this)closeWalletModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd"><span class="modal-title">🪙 Крипто-кошелёк</span><button class="modal-close" onclick="closeWalletModal()">✕</button></div>
+    <div id="wallet-modal-body"></div>
+  </div>
+</div>
+
 <button class="fab" onclick="openAddModal()" title="Добавить">+</button>
 <div class="toast" id="toast"></div>
 
@@ -1796,7 +1812,7 @@ function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null,wallets:null};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -1804,12 +1820,13 @@ async function loadAllData(){
   await api('/api/accounts').then(r=>{store.accounts=r.accounts||[]}).catch(()=>{store.accounts=[]});
   const txR=await api('/api/transactions');
   const gate=(fallback)=>(e)=>{ if(e&&e.status===402)return fallback; throw e; }; // фича за пейволом → пусто
-  const [budR,portR,recR,goalR,billR]=await Promise.all([
+  const [budR,portR,recR,goalR,billR,walR]=await Promise.all([
     api('/api/budgets'),
     api('/api/portfolio').catch(gate({holdings:[]})),
     api('/api/recurring').catch(gate({rules:[]})),
     api('/api/goals').catch(gate({goals:[]})),
     api('/api/billing').catch(()=>null),
+    api('/api/wallets').catch(()=>({wallets:[],totalUsd:0})),
   ]);
   store.tx=txR.transactions||[];
   store.budgets=budR.budgets||{};
@@ -1817,6 +1834,11 @@ async function loadAllData(){
   store.recurring=recR.rules||[];
   store.goals=goalR.goals||[];
   store.billing=billR;
+  store.wallets=walR.wallets||[];
+}
+async function reloadWallets(){
+  const r=await api('/api/wallets');
+  store.wallets=r.wallets||[];
 }
 async function reloadGoals(){
   const r=await api('/api/goals');
@@ -2170,7 +2192,7 @@ function goPage(p){
     b.classList.toggle('on', b.dataset.page===p || (b.dataset.page==='__more' && !MOBILEBAR_PAGES.includes(p)));
   });
   document.querySelectorAll('.sheet-item[data-page]').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',simulator:'Симулятор',profile:'Профиль',billing:'Тариф',admin:'Админка',support:'Поддержка'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',wallets:'Кошельки',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',simulator:'Симулятор',profile:'Профиль',billing:'Тариф',admin:'Админка',support:'Поддержка'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
@@ -2214,6 +2236,7 @@ function render(){
   else if(curPage==='recurring')el.innerHTML=renderRecurring();
   else if(curPage==='billing')el.innerHTML=renderBilling();
   else if(curPage==='accounts')el.innerHTML=renderAccounts();
+  else if(curPage==='wallets')el.innerHTML=renderWallets();
   else if(curPage==='goals')el.innerHTML=renderGoals();
   else if(curPage==='support')el.innerHTML=renderSupport();
   else if(curPage==='simulator')el.innerHTML=renderSim();
@@ -2339,7 +2362,8 @@ function dashWidgetHTML(id,ctx){
       <div class="nw-hero-value">${fmt(nw.total)}</div>
       <div class="nw-hero-row">
         <span>💳 Счета <b>${fmtNum(nw.accSum)}</b></span>
-        <span>💼 Портфель <b>${fmtNum(nw.portSum)}</b></span>
+        ${nw.walSum?`<span>🪙 Кошельки <b>${fmtNum(nw.walSum)}</b></span>`:''}
+        ${nw.portSum?`<span>💼 Портфель <b>${fmtNum(nw.portSum)}</b></span>`:''}
         ${btc?`<span>₿ BTC <b style="color:${btc.price_change_percentage_24h>=0?'var(--green)':'var(--red)'}">${btc.price_change_percentage_24h>=0?'+':''}${btc.price_change_percentage_24h.toFixed(1)}%</b></span>`:''}
       </div>
     </div>`;
@@ -2863,11 +2887,14 @@ function accKind(id){return ACC_KINDS.find(k=>k.id===id)||ACC_KINDS[5]}
 function accountBalance(acc){
   return acc.startBalance + store.tx.reduce((s,t)=> t.accountId===acc.id ? s+(t.type==='income'?t.amount:-t.amount) : s, 0);
 }
+function walletsSumUsd(){ return (store.wallets||[]).reduce((s,w)=>s+(w.usd||0),0); }
+function walletsSum(){ return usdTo(baseCurrency, walletsSumUsd()); }
 function netWorth(){
   const accSum=store.accounts.filter(a=>!a.archived).reduce((s,a)=>s+accountBalance(a),0);
   let portSum=0;
   if(isPro()&&store.portfolio.length){ try{ portSum=store.portfolio.reduce((s,h)=>s+calcHolding(h).value,0); }catch{} }
-  return {accSum,portSum,total:accSum+portSum};
+  const walSum=walletsSum();
+  return {accSum,portSum,walSum,total:accSum+portSum+walSum};
 }
 function defaultAccountId(){ const a=store.accounts.filter(x=>!x.archived)[0]; return a?a.id:'' }
 
@@ -2881,7 +2908,8 @@ function renderAccounts(){
     <div class="card" style="margin-bottom:14px;text-align:center;padding:20px">
       <div style="font-size:.6rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Чистый капитал</div>
       <div style="font-size:1.5rem;font-weight:900;color:${nw.total>=0?'var(--t1)':'var(--red)'};margin-top:3px">${fmt(nw.total)}</div>
-      <div style="font-size:.66rem;color:var(--t3);margin-top:4px">Счета ${fmt(nw.accSum)}${nw.portSum?` · Портфель ${fmt(nw.portSum)}`:''}</div>
+      <div style="font-size:.66rem;color:var(--t3);margin-top:4px">Счета ${fmt(nw.accSum)}${nw.walSum?` · Кошельки ${fmt(nw.walSum)}`:''}${nw.portSum?` · Портфель ${fmt(nw.portSum)}`:''}</div>
+      <button class="btn btn-ghost" style="margin-top:10px;font-size:.7rem" onclick="goWallets()">🪙 Крипто-кошельки</button>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
       <div class="ps-title" style="margin:0;padding:0;border:none">Счета и карты</div>
@@ -3296,6 +3324,163 @@ async function submitSimTrade(){
 async function simReset(){
   if(!confirm('Сбросить симулятор? Позиции и история очистятся, счёт вернётся к $10 000.'))return;
   try{ store.sim=await api('/api/sim/reset',{method:'POST'}); render(); showToast('🔄 Симулятор сброшен'); }
+  catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ═══════════════════════════════════════════
+   КРИПТО-КОШЕЛЬКИ (просмотр баланса по адресу, read-only)
+═══════════════════════════════════════════ */
+const WALLET_CHAINS=[
+  {id:'BTC',e:'₿',name:'Bitcoin',ph:'bc1... либо 1... / 3...'},
+  {id:'ETH',e:'Ξ',name:'Ethereum',ph:'0x... (40 hex)'},
+  {id:'TON',e:'💎',name:'Toncoin',ph:'EQ... либо UQ...'},
+];
+function walletChain(id){ return WALLET_CHAINS.find(c=>c.id===id)||{id,e:'●',name:id}; }
+function shortAddr(a){ return a && a.length>16 ? a.slice(0,7)+'…'+a.slice(-5) : (a||''); }
+function fmtNative(n){
+  if(n==null)return '—';
+  if(n===0)return '0';
+  if(n>=1000)return n.toLocaleString('ru-RU',{maximumFractionDigits:2});
+  if(n>=1)return n.toLocaleString('ru-RU',{maximumFractionDigits:4});
+  return n.toLocaleString('ru-RU',{maximumFractionDigits:8});
+}
+function agoText(ts){
+  if(!ts)return 'ещё не обновлялся';
+  const s=Math.floor((Date.now()-new Date(ts).getTime())/1000);
+  if(s<60)return 'обновлён только что';
+  if(s<3600)return `обновлён ${Math.floor(s/60)} мин назад`;
+  if(s<86400)return `обновлён ${Math.floor(s/3600)} ч назад`;
+  return `обновлён ${Math.floor(s/86400)} дн назад`;
+}
+
+async function goWallets(){
+  closeMoreSheet();closeDD();
+  goPage('wallets');
+  try{ await reloadWallets(); if(curPage==='wallets')render(); }catch(e){}
+}
+
+function renderWallets(){
+  const ws=store.wallets||[];
+  const usd=walletsSumUsd();
+  const limit=currentUser.tier==='premium'||currentUser.tier==='business'?null:(currentUser.tier==='pro'?10:2);
+  const canAdd=limit==null||ws.length<limit;
+  return `
+  <div style="max-width:640px">
+    <div class="card nw-hero" style="cursor:default;background:linear-gradient(135deg,hsl(28,60%,22%),hsl(45,55%,24%))">
+      <div class="nw-hero-label">Крипто-кошельки</div>
+      <div class="nw-hero-value">${fmt(usdTo(baseCurrency,usd))}</div>
+      <div class="nw-hero-row">
+        <span>≈ $${fmtNum(usd)}</span>
+        <span>${ws.length} ${ws.length===1?'кошелёк':(ws.length>=2&&ws.length<=4?'кошелька':'кошельков')}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin:12px 0">
+      ${canAdd
+        ?`<button class="btn btn-primary" style="flex:1" onclick="openWalletModal()">＋ Добавить кошелёк</button>`
+        :`<button class="btn btn-ghost" style="flex:1" onclick="goPage('billing')">🔒 Лимит ${limit} · открыть тариф</button>`}
+      ${ws.length?`<button class="btn btn-ghost" onclick="syncAllWallets()">⟳ Обновить</button>`:''}
+    </div>
+    <p style="font-size:.66rem;color:var(--t3);line-height:1.5;margin-bottom:14px">Только просмотр по публичному адресу — приватные ключи не нужны и не хранятся. Показан баланс нативной монеты сети (без токенов ERC-20/Jetton). Курс — CoinGecko.</p>
+
+    ${ws.length?ws.map(w=>{
+      const c=walletChain(w.chain);
+      const fiat=w.usd!=null?usdTo(baseCurrency,w.usd):null;
+      return `<div class="card card-sm" style="margin-bottom:9px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="tx-cat" style="background:#c98a2e2e;font-size:17px">${c.e}</div>
+          <div style="flex:1;min-width:0">
+            <div class="tx-name">${w.label?w.label.replace(/</g,'&lt;'):c.name}</div>
+            <div class="tx-meta" style="font-family:ui-monospace,Menlo,monospace;cursor:pointer" onclick="copyText('${w.address}')" title="Скопировать">${shortAddr(w.address)} · ${c.id}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="tx-amt">${fiat!=null?fmt(fiat):'—'}</div>
+            <div style="font-size:.66rem;color:var(--t3)">${fmtNative(w.native)} ${c.id}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:8px">
+          <span style="font-size:.63rem;color:${w.error?'var(--red)':'var(--t3)'}">${w.error?('⚠ '+w.error):agoText(w.lastSync)}</span>
+          <span style="display:flex;gap:6px">
+            <button class="wl-act" title="Обновить" onclick="syncWallet('${w.id}')">⟳ Обновить</button>
+            <button class="wl-act" title="Переименовать" onclick="editWalletLabel('${w.id}')">✎</button>
+            <button class="wl-act" title="Удалить" onclick="deleteWallet('${w.id}')">✕</button>
+          </span>
+        </div>
+      </div>`;
+    }).join(''):`<div class="empty" style="padding:36px 0"><div class="empty-ico">🪙</div><div class="empty-t">Кошельков пока нет</div><p style="font-size:.72rem;color:var(--t3);margin-top:6px">Добавь адрес BTC, ETH или TON — увидишь баланс в общей картине капитала.</p></div>`}
+  </div>`;
+}
+
+function copyText(t){
+  try{ navigator.clipboard.writeText(t); showToast('📋 Адрес скопирован'); }catch{ showToast('Не удалось скопировать',true); }
+}
+
+function openWalletModal(){
+  document.getElementById('wallet-modal-body').innerHTML=`
+    <div style="margin-bottom:11px"><label class="flbl">Сеть</label>
+      <select class="finput" id="wl-chain" onchange="walletPhHint()">${WALLET_CHAINS.map(c=>`<option value="${c.id}">${c.e} ${c.name}</option>`).join('')}</select>
+    </div>
+    <div style="margin-bottom:11px"><label class="flbl">Адрес</label>
+      <input class="finput" id="wl-addr" placeholder="" style="font-family:ui-monospace,Menlo,monospace" autocomplete="off" autocapitalize="off" spellcheck="false"/>
+      <div style="font-size:.63rem;color:var(--t3);margin-top:4px" id="wl-ph"></div>
+    </div>
+    <div style="margin-bottom:13px"><label class="flbl">Название (необязательно)</label>
+      <input class="finput" id="wl-label" maxlength="40" placeholder="Напр. «Холодный BTC»"/>
+    </div>
+    <div class="ferr" id="wl-err" style="margin-bottom:8px"><span>⚠</span><span></span></div>
+    <button class="btn btn-primary" id="wl-submit" style="width:100%;justify-content:center;padding:10px" onclick="submitWallet()">Добавить и проверить баланс</button>`;
+  document.getElementById('wallet-modal').style.display='grid';
+  walletPhHint();
+  setTimeout(()=>{const i=document.getElementById('wl-addr');if(i)i.focus();},30);
+}
+function walletPhHint(){
+  const c=walletChain(document.getElementById('wl-chain').value);
+  const ph=document.getElementById('wl-ph');
+  if(ph)ph.textContent='Формат: '+c.ph;
+}
+function closeWalletModal(){const m=document.getElementById('wallet-modal');if(m)m.style.display='none'}
+
+async function submitWallet(){
+  const err=document.getElementById('wl-err');err.classList.remove('show');
+  const fail=m=>{err.querySelector('span:last-child').textContent=m;err.classList.add('show')};
+  const chain=document.getElementById('wl-chain').value;
+  const address=(document.getElementById('wl-addr').value||'').trim();
+  const label=(document.getElementById('wl-label').value||'').trim();
+  if(!address)return fail('Введи адрес');
+  const btn=document.getElementById('wl-submit');
+  if(btn){btn.disabled=true;btn.textContent='Проверяю баланс…';}
+  try{
+    const r=await api('/api/wallets',{method:'POST',body:{chain,address,label:label||undefined}});
+    await reloadWallets();
+    closeWalletModal();haptic(12);render();
+    showToast(r.wallet&&r.wallet.error?('Добавлен, баланс подтянем позже: '+r.wallet.error):'✅ Кошелёк добавлен');
+  }catch(e){
+    if(e.status===402){ closeWalletModal(); showToast(e.message||'Лимит кошельков',true); goPage('billing'); return; }
+    fail(e.message||'Не удалось добавить');
+    if(btn){btn.disabled=false;btn.textContent='Добавить и проверить баланс';}
+  }
+}
+async function syncWallet(id){
+  try{
+    await api('/api/wallets/'+id+'/sync',{method:'POST'});
+    await reloadWallets();render();
+  }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+async function syncAllWallets(){
+  showToast('⟳ Обновляю балансы…');
+  try{ store.wallets=(await api('/api/wallets/sync',{method:'POST'})).wallets||[]; render(); showToast('✅ Балансы обновлены'); }
+  catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+async function editWalletLabel(id){
+  const w=(store.wallets||[]).find(x=>x.id===id);if(!w)return;
+  const v=prompt('Название кошелька:',w.label||'');
+  if(v===null)return;
+  try{ await api('/api/wallets/'+id,{method:'PATCH',body:{label:v.trim()||null}}); await reloadWallets(); render(); }
+  catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+async function deleteWallet(id){
+  if(!confirm('Удалить кошелёк из списка? На сам кошелёк это никак не влияет.'))return;
+  try{ await api('/api/wallets/'+id,{method:'DELETE'}); await reloadWallets(); render(); showToast('Кошелёк удалён'); }
   catch(e){ showToast('❌ '+(e.message||e),true) }
 }
 
@@ -4739,7 +4924,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal();closeWalletModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

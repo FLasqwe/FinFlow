@@ -6,6 +6,7 @@ const RANK = { free: 0, pro: 1, premium: 2, business: 3 };
 
 const FREE_TX_PER_MONTH = 50;
 const ACCOUNT_LIMIT = { free: 1, pro: 5, premium: Infinity, business: Infinity };
+const WALLET_LIMIT = { free: 2, pro: 10, premium: Infinity, business: Infinity };
 const LIFETIME = '2099-12-31T00:00:00Z';
 
 const TIER_LABEL = { free: 'Free', pro: 'Pro', premium: 'Premium', business: 'Business' };
@@ -26,6 +27,10 @@ function accountLimit(u) {
   return ACCOUNT_LIMIT[effectiveTier(u)];
 }
 
+function walletLimit(u) {
+  return WALLET_LIMIT[effectiveTier(u)];
+}
+
 function planInfo(u) {
   const tier = effectiveTier(u);
   const until = tier !== 'free' && u && u.tier_until ? new Date(u.tier_until) : null;
@@ -41,6 +46,6 @@ function planInfo(u) {
 }
 
 module.exports = {
-  TIERS, RANK, TIER_LABEL, FREE_TX_PER_MONTH, ACCOUNT_LIMIT, LIFETIME,
-  effectiveTier, tierAtLeast, accountLimit, planInfo,
+  TIERS, RANK, TIER_LABEL, FREE_TX_PER_MONTH, ACCOUNT_LIMIT, WALLET_LIMIT, LIFETIME,
+  effectiveTier, tierAtLeast, accountLimit, walletLimit, planInfo,
 };

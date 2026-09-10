@@ -211,6 +211,24 @@ CREATE TABLE IF NOT EXISTS support_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_support_messages_thread ON support_messages(thread_id, created_at);
 
+-- ── Крипто-кошельки: просмотр баланса по адресу (read-only) ──
+-- Никаких приватных ключей. Баланс тянется из публичных эксплореров и кэшируется.
+CREATE TABLE IF NOT EXISTS wallets (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  chain        TEXT NOT NULL CHECK (chain IN ('BTC','ETH','TON')),
+  address      TEXT NOT NULL,
+  label        TEXT,
+  last_native  NUMERIC(40,18),          -- баланс в единицах сети (BTC / ETH / TON)
+  last_usd     NUMERIC(20,2),           -- оценка в USD на момент синхронизации
+  last_price   NUMERIC(20,8),           -- курс монеты на момент синхронизации
+  last_sync    TIMESTAMPTZ,
+  sync_error   TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, chain, address)
+);
+CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
+
 -- ── Симулятор торговли (бумажные деньги, реальные котировки) ──
 CREATE TABLE IF NOT EXISTS sim_accounts (
   user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
