@@ -1166,14 +1166,111 @@ canvas { display: block; max-width: 100%; }
   .mkt-summary { grid-template-columns: repeat(2,1fr); }
 }
 @media (max-width: 620px) {
-  .stats { grid-template-columns: 1fr; }
-  .sidebar { position: fixed; left: -100%; transition: left 0.26s ease; z-index: 100; height: 100vh; }
-  .sidebar.open { left: 0; box-shadow: var(--shadow-lg); }
   .profile-form-grid { grid-template-columns: 1fr; }
   .export-grid { grid-template-columns: 1fr 1fr; }
-  .content { padding: 16px; }
-  .topbar { padding: 0 16px; }
 }
+
+/* ═══════════ МОБИЛЬНЫЙ ИНТЕРФЕЙС ═══════════ */
+.mobilebar { display: none; }
+.sheet { display: none; }
+
+@media (max-width: 768px) {
+  /* прячем десктопную навигацию и плавающую кнопку */
+  .sidebar { display: none !important; }
+  .fab { display: none !important; }
+  /* топбар: только заголовок, период и аватар */
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar .btn-primary, #budget-topbtn { display: none !important; }
+  .topbar-title { font-size: .95rem; }
+  .topbar-month { display: none; }
+  .acct-name, .acct-role, .acct-arr { display: none; }
+  .acct-btn { padding: 4px; background: none; border: none; }
+  .content { padding: 14px 14px 90px; }
+
+  /* компактные карточки итогов — плитки 2×2 */
+  .stats { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .stat { padding: 12px 13px; }
+  .stat-ico { font-size: 1rem; }
+  .stat-lbl { font-size: .56rem; }
+  .stat-val { font-size: 1.1rem; }
+  .stat-sub { font-size: .58rem; }
+  .stat-tag { position: static; display: inline-block; margin-top: 6px; }
+  .dash-toolbar { justify-content: center; }
+
+  /* модалки — снизу, как нативные bottom-sheet */
+  .overlay { place-items: end center; padding: 0; }
+  .modal {
+    max-width: 100%; width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh; overflow-y: auto;
+    padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+    animation: sheetup .26s cubic-bezier(0.16,1,0.3,1);
+  }
+  .modal::before { display: none; }
+  /* меню аккаунта — тоже снизу */
+  .acct-dd {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+    width: 100%; border-radius: 18px 18px 0 0;
+    max-height: 80vh; overflow-y: auto;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  /* нижняя навигация */
+  .mobilebar {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+    background: var(--s1); border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(10px);
+  }
+  .mb-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: none; cursor: pointer;
+    color: var(--t3); font-size: .58rem; font-weight: 600; padding: 5px 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mb-btn .mb-ico { font-size: 1.15rem; line-height: 1; }
+  .mb-btn.on { color: var(--acc); }
+  .mb-add {
+    flex: 0 0 52px;
+  }
+  .mb-add .mb-ico {
+    width: 46px; height: 46px; margin-top: -14px;
+    border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--acc), hsl(calc(var(--acc-h) + 20),80%,66%));
+    color: #fff; font-size: 1.5rem;
+    box-shadow: 0 4px 16px var(--acc-glow);
+    transition: transform .12s ease;
+  }
+  .mb-add:active .mb-ico { transform: scale(.9); }
+
+  /* нижний sheet «Ещё» */
+  .sheet {
+    display: block; position: fixed; inset: 0; z-index: 260;
+    background: hsla(228,20%,5%,.75); backdrop-filter: blur(4px);
+    animation: fi .16s ease;
+  }
+  .sheet[hidden] { display: none; }
+  .sheet-panel {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--s1); border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 8px 10px calc(72px + env(safe-area-inset-bottom));
+    max-height: 82vh; overflow-y: auto;
+    animation: sheetup .26s cubic-bezier(0.16,1,0.3,1);
+  }
+  .sheet-grip { width: 36px; height: 4px; border-radius: 99px; background: var(--border); margin: 4px auto 10px; }
+  .sheet-item {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: none; border: none; cursor: pointer;
+    color: var(--t1); font: inherit; font-size: .85rem; text-align: left;
+    padding: 12px 10px; border-radius: 10px;
+  }
+  .sheet-item:active { background: var(--s3); }
+  .sheet-item .si-ico { font-size: 1.1rem; width: 22px; text-align: center; }
+  .sheet-item.on { color: var(--acc); }
+  .sheet-sep { height: 1px; background: var(--border); margin: 6px 8px; }
+}
+@keyframes sheetup { from { transform: translateY(100%) } to { transform: translateY(0) } }
 </style>
 
 </head>
@@ -1359,6 +1456,35 @@ canvas { display: block; max-width: 100%; }
       </div>
     </header>
     <div class="content" id="content"></div>
+  </div>
+
+  <!-- НИЖНЯЯ НАВИГАЦИЯ (мобильные) -->
+  <nav class="mobilebar" id="mobilebar">
+    <button class="mb-btn" data-page="dashboard" onclick="goPage('dashboard')"><span class="mb-ico">◈</span>Главная</button>
+    <button class="mb-btn" data-page="transactions" onclick="goPage('transactions')"><span class="mb-ico">↕</span>Операции</button>
+    <button class="mb-btn mb-add" onclick="openAddModal()"><span class="mb-ico">+</span></button>
+    <button class="mb-btn" data-page="accounts" onclick="goPage('accounts')"><span class="mb-ico">▤</span>Счета</button>
+    <button class="mb-btn" data-page="__more" onclick="openMoreSheet()"><span class="mb-ico">☰</span>Ещё</button>
+  </nav>
+</div>
+
+<!-- SHEET «ЕЩЁ» (мобильные) -->
+<div class="sheet" id="more-sheet" hidden onclick="if(event.target===this)closeMoreSheet()">
+  <div class="sheet-panel">
+    <div class="sheet-grip"></div>
+    <button class="sheet-item" data-page="budgets" onclick="moreGo('budgets')"><span class="si-ico">◎</span>Бюджеты</button>
+    <button class="sheet-item" data-page="recurring" onclick="moreGo('recurring')"><span class="si-ico">↻</span>Регулярные</button>
+    <button class="sheet-item" data-page="analytics" onclick="moreGo('analytics')"><span class="si-ico">▣</span>Аналитика</button>
+    <button class="sheet-item" data-page="portfolio" onclick="moreGo('portfolio')"><span class="si-ico">💼</span>Портфель</button>
+    <button class="sheet-item" data-page="markets" onclick="moreGo('markets')"><span class="si-ico">📈</span>Рынки</button>
+    <button class="sheet-item" data-page="crypto" onclick="moreGo('crypto')"><span class="si-ico">₿</span>Криптовалюты</button>
+    <div class="sheet-sep"></div>
+    <button class="sheet-item" data-page="billing" onclick="moreGo('billing')"><span class="si-ico">⭐</span>Тариф</button>
+    <button class="sheet-item" data-page="profile" onclick="moreGo('profile')"><span class="si-ico">👤</span>Профиль</button>
+    <button class="sheet-item" onclick="toggleTheme();closeMoreSheet()"><span class="si-ico" id="sheet-theme-ico">🌙</span><span id="sheet-theme-txt">Светлая тема</span></button>
+    <button class="sheet-item" id="sheet-install" onclick="installApp();closeMoreSheet()" style="display:none"><span class="si-ico">📲</span>Установить приложение</button>
+    <div class="sheet-sep"></div>
+    <button class="sheet-item" onclick="closeMoreSheet();doLogout()" style="color:var(--red)"><span class="si-ico">🚪</span>Выйти</button>
   </div>
 </div>
 
@@ -1676,6 +1802,10 @@ function applyTheme(){
   const txt=document.getElementById('dd-theme-txt');
   if(ico)ico.textContent=isDark?'☀️':'🌙';
   if(txt)txt.textContent=isDark?'Светлая тема':'Тёмная тема';
+  const sico=document.getElementById('sheet-theme-ico');
+  const stxt=document.getElementById('sheet-theme-txt');
+  if(sico)sico.textContent=isDark?'☀️':'🌙';
+  if(stxt)stxt.textContent=isDark?'Светлая тема':'Тёмная тема';
 }
 function toggleTheme(){
   isDark=!isDark;sv('ff_theme',isDark?'dark':'light');
@@ -1912,16 +2042,29 @@ function tExp(txs){return txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.am
 /* ═══════════════════════════════════════════
    NAV
 ═══════════════════════════════════════════ */
+const MOBILEBAR_PAGES=['dashboard','transactions','accounts'];
 function goPage(p){
   // Фича за пейволом и тариф не Pro → ведём на экран «Тариф».
   if(PRO_PAGES.includes(p)&&!isPro())p='billing';
   curPage=p;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
+  // нижняя навигация: подсветить вкладку либо «Ещё», если страница не из основных
+  document.querySelectorAll('.mb-btn[data-page]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.page===p || (b.dataset.page==='__more' && !MOBILEBAR_PAGES.includes(p)));
+  });
+  document.querySelectorAll('.sheet-item[data-page]').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
   const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
 }
+/* ── Нижний sheet «Ещё» (мобильные) ── */
+function openMoreSheet(){ const s=document.getElementById('more-sheet'); if(s){s.hidden=false; haptic()} }
+function closeMoreSheet(){ const s=document.getElementById('more-sheet'); if(s)s.hidden=true; }
+function moreGo(p){ closeMoreSheet(); goPage(p); }
+/* лёгкая тактильная отдача (Android; iOS Safari игнорирует — не мешает) */
+function haptic(ms){ try{ navigator.vibrate && navigator.vibrate(ms||8) }catch{} }
+
 /* Замок на пунктах меню ниже нужного тарифа + бейдж в меню аккаунта. */
 function updateTierUI(){
   const pro=isPro();
@@ -3548,6 +3691,7 @@ async function submitTx(){
   try{
     const r=await api('/api/transactions',{method:'POST',body:payload});
     store.tx.unshift(r.transaction);
+    haptic(12);
     render();
   }catch(e){
     if(e.status===402){ showToast(e.message||'Лимит бесплатного тарифа',true); goPage('billing'); return; }
@@ -3889,7 +4033,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();
@@ -3916,8 +4060,11 @@ function canInstall(){
   return isIOS(); // на iOS системного промпта нет — покажем инструкцию
 }
 function refreshInstallUI(){
+  const show=canInstall()?'':'none';
   const dd=document.getElementById('dd-install');
-  if(dd)dd.style.display=canInstall()?'':'none';
+  if(dd)dd.style.display=show;
+  const sh=document.getElementById('sheet-install');
+  if(sh)sh.style.display=show;
   if(currentUser&&curPage==='profile')render();
 }
 async function installApp(){
