@@ -58,6 +58,7 @@ function toPublicUser(row) {
     theme: row.theme,
     accentHue: row.accent_hue,
     dashboardWidgets: row.dashboard_widgets,
+    watchlist: Array.isArray(row.watchlist) ? row.watchlist : [],
     twofa: row.totp_enabled,
     emailVerified: row.email_verified !== false,
     createdAt: row.created_at,

@@ -195,6 +195,23 @@ body.is-offline .net-pill { display: inline-flex; }
 .sheet-item.nav-locked { opacity: .5; }
 .sheet-item.nav-locked::after { content: '🔒'; margin-left: auto; font-size: .8em; }
 
+/* Крипто-first: hero чистого капитала */
+.nw-hero {
+  cursor: pointer;
+  background: linear-gradient(135deg, hsl(var(--acc-h),62%,20%), hsl(calc(var(--acc-h) + 30),58%,26%));
+  border: 1px solid hsla(var(--acc-h),60%,55%,.35);
+  color: #fff;
+}
+.nw-hero-label { font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+.nw-hero-value { font-size: 2rem; font-weight: 900; margin: 4px 0 8px; letter-spacing: -.02em; }
+.nw-hero-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: .68rem; opacity: .92; }
+.nw-hero-row b { font-weight: 800; }
+.watch-star {
+  background: none; border: 0; cursor: pointer; font-size: 1.05rem; line-height: 1;
+  color: var(--t3); padding: 2px 4px; -webkit-tap-highlight-color: transparent;
+}
+.watch-star.on { color: #f5b301; }
+
 /* Полировка: мягкий подъём карточек и кнопок на десктопе */
 @media (hover: hover) and (min-width: 769px) {
   .card:not(.card-sm):hover, .bud-card:hover, .tier-card:hover, .goal-card:hover, .port-row:hover { transform: translateY(-2px); }
@@ -1746,6 +1763,7 @@ function mapUser(u){
     theme:u.theme||'dark',
     accentHue:(u.accentHue!=null?u.accentHue:252),
     dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
+    watchlist:Array.isArray(u.watchlist)?u.watchlist:[],
     twofa:!!u.twofa,
     emailVerified:u.emailVerified!==false,
     joinedAt:u.createdAt||new Date().toISOString(),
@@ -2203,20 +2221,25 @@ function render(){
    DASHBOARD — настраиваемые виджеты
 ═══════════════════════════════════════════ */
 const ALL_WIDGETS=[
-  {id:'stats',name:'Карточки итогов',icon:'💰'},
+  {id:'netWorthHero',name:'Чистый капитал',icon:'💎'},
+  {id:'marketTicker',name:'Крипта и золото',icon:'₿'},
+  {id:'watchlist',name:'Watchlist',icon:'⭐'},
+  {id:'portfolioSummary',name:'Портфель — сводка',icon:'💼'},
   {id:'accounts',name:'Счета и капитал',icon:'▤'},
   {id:'goals',name:'Цели',icon:'🎯'},
+  {id:'stats',name:'Карточки итогов',icon:'💰'},
   {id:'areaChart',name:'Динамика месяца',icon:'📈'},
   {id:'pieChart',name:'Расходы по категориям',icon:'🥧'},
   {id:'insights',name:'Инсайты',icon:'💡'},
   {id:'recent',name:'Последние операции',icon:'🧾'},
-  {id:'portfolioSummary',name:'Портфель — сводка',icon:'💼'},
-  {id:'marketTicker',name:'Крипта и золото',icon:'₿'},
 ];
 function getDashboardConfig(){
   let cfg=Array.isArray(currentUser.dashboardWidgets)?currentUser.dashboardWidgets.slice():[];
-  const known=new Set(cfg.map(c=>c.id));
-  ALL_WIDGETS.forEach(w=>{if(!known.has(w.id))cfg.push({id:w.id,visible:true})});
+  let known=new Set(cfg.map(c=>c.id));
+  // новые крипто-виджеты — в начало (и существующим пользователям тоже)
+  ['watchlist','netWorthHero'].forEach(fid=>{ if(!known.has(fid))cfg.unshift({id:fid,visible:true}); });
+  known=new Set(cfg.map(c=>c.id));
+  ALL_WIDGETS.forEach(w=>{ if(!known.has(w.id))cfg.push({id:w.id,visible:true}); });
   cfg=cfg.filter(c=>ALL_WIDGETS.some(w=>w.id===c.id));
   return cfg;
 }
@@ -2293,8 +2316,40 @@ function dashMarketTickerWidget(){
     </div>`).join('')}
   </div>`;
 }
+function cryptoById(){const b={};(cryptoLive?.markets||[]).forEach(m=>b[m.id]=m);return b}
 function dashWidgetHTML(id,ctx){
   const{tx,inc,exp,bal,rate,ins,recent}=ctx;
+  if(id==='netWorthHero'){
+    const nw=netWorth();
+    const by=cryptoById();
+    const btc=by['bitcoin'];
+    return `<div class="card nw-hero" onclick="goPage('accounts')">
+      <div class="nw-hero-label">Чистый капитал</div>
+      <div class="nw-hero-value">${fmt(nw.total)}</div>
+      <div class="nw-hero-row">
+        <span>💳 Счета <b>${fmtNum(nw.accSum)}</b></span>
+        <span>💼 Портфель <b>${fmtNum(nw.portSum)}</b></span>
+        ${btc?`<span>₿ BTC <b style="color:${btc.price_change_percentage_24h>=0?'var(--green)':'var(--red)'}">${btc.price_change_percentage_24h>=0?'+':''}${btc.price_change_percentage_24h.toFixed(1)}%</b></span>`:''}
+      </div>
+    </div>`;
+  }
+  if(id==='watchlist'){
+    const wl=(currentUser.watchlist||[]);
+    if(!wl.length)return `<div class="card" style="cursor:pointer" onclick="goPage('crypto')"><div class="ctitle">Watchlist ⭐</div><div style="font-size:.72rem;color:var(--t3);padding:6px 0">Отметьте монеты звёздочкой в разделе «Криптовалюты» — они появятся здесь.</div></div>`;
+    const by=cryptoById();
+    return `<div class="card"><div class="ctitle">Watchlist ⭐</div>
+      ${CRYPTOS.filter(c=>wl.includes(c.id)).map(c=>{
+        const l=by[c.cg];
+        return `<div class="dash-ticker-row" onclick="openAssetDetail('crypto','${c.id}')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1)">${c.e} ${c.sym}</div>
+          <div style="text-align:right">
+            <div style="font-size:.78rem;font-weight:700;color:var(--t1)">${l?'$'+fmtByMagnitude(l.current_price):'…'}</div>
+            ${l?`<div style="font-size:.63rem;font-weight:700;color:${l.price_change_percentage_24h>=0?'var(--green)':'var(--red)'}">${l.price_change_percentage_24h>=0?'▲':'▼'} ${Math.abs(l.price_change_percentage_24h).toFixed(2)}%</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
   if(id==='stats')return`<div class="stats">
     <div class="stat stat-bal">
       <div class="stat-ico">💰</div><div class="stat-lbl">Баланс</div>
@@ -3063,7 +3118,7 @@ function renderSupport(){
   const waiting=s.thread.status==='waiting_human'||s.thread.needsHuman;
   const bubble=m=>{
     const mine=m.sender==='user';
-    const who=m.sender==='admin'?'Поддержка':m.sender==='bot'?'Бот':'';
+    const who=m.sender==='admin'?'Поддержка':m.sender==='bot'?'Ева':'';
     return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin:6px 0">
       <div style="max-width:80%;background:${mine?'var(--acc)':'var(--s2)'};color:${mine?'#fff':'var(--t1)'};border:1px solid ${mine?'transparent':'var(--border)'};border-radius:14px;padding:8px 12px;font-size:.8rem;line-height:1.45;white-space:pre-wrap;word-break:break-word">
         ${who?`<div style="font-size:.62rem;font-weight:700;color:${mine?'rgba(255,255,255,.7)':'var(--t3)'};margin-bottom:2px">${who}</div>`:''}${m.body.replace(/</g,'&lt;')}
@@ -3160,7 +3215,7 @@ function renderAdmin(){
       <div class="ctitle">Обращения в поддержку${o.totals.support_waiting?` <span class="plan-badge plan-pro" style="margin-left:4px">${o.totals.support_waiting} ждут</span>`:''}</div>
       ${a.support&&a.support.length?a.support.map(t=>`<div onclick="adminOpenThread('${t.id}')" style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer">
         <span style="font-size:1rem">${t.needs_human?'🙋':t.status==='answered'?'✅':'💬'}</span>
-        <div style="flex:1;min-width:0"><div class="tx-name" style="font-size:.8rem">${t.email}</div><div class="tx-meta">${(t.last_sender==='admin'?'Вы: ':t.last_sender==='bot'?'Бот: ':'')}${(t.last_body||'').replace(/</g,'&lt;').slice(0,60)}</div></div>
+        <div style="flex:1;min-width:0"><div class="tx-name" style="font-size:.8rem">${t.email}</div><div class="tx-meta">${(t.last_sender==='admin'?'Вы: ':t.last_sender==='bot'?'Ева: ':'')}${(t.last_body||'').replace(/</g,'&lt;').slice(0,60)}</div></div>
         <span style="font-size:.62rem;color:var(--t3);white-space:nowrap">${fmtDT(t.last_message_at)}</span>
       </div>`).join(''):`<div style="font-size:.75rem;color:var(--t3)">Обращений нет</div>`}
     </div>
@@ -3242,7 +3297,7 @@ async function adminRenderThread(){
     const d=await api('/api/admin/support/'+adminThreadId);
     const bub=m=>{
       const admin=m.sender==='admin';
-      const who=m.sender==='admin'?'Вы':m.sender==='bot'?'Бот':d.thread.email;
+      const who=m.sender==='admin'?'Вы':m.sender==='bot'?'Ева':d.thread.email;
       return `<div style="display:flex;justify-content:${admin?'flex-end':'flex-start'};margin:5px 0"><div style="max-width:82%;background:${admin?'var(--acc)':'var(--s2)'};color:${admin?'#fff':'var(--t1)'};border-radius:12px;padding:7px 11px;font-size:.76rem;line-height:1.4;white-space:pre-wrap;word-break:break-word"><div style="font-size:.6rem;font-weight:700;opacity:.7;margin-bottom:2px">${who}</div>${m.body.replace(/</g,'&lt;')}</div></div>`;
     };
     body.innerHTML=`
@@ -3532,6 +3587,15 @@ const CRYPTOS=[
 let cryptoTabActive='all';
 let cryptoLive=null,cryptoLastTs=0;
 
+function toggleWatch(id){
+  const wl=Array.isArray(currentUser.watchlist)?currentUser.watchlist.slice():[];
+  const i=wl.indexOf(id);
+  if(i>=0)wl.splice(i,1); else wl.push(id);
+  currentUser.watchlist=wl;
+  pushMe({watchlist:wl});
+  render();
+}
+
 function downsample(arr,n){if(!arr||arr.length<=n)return arr||[];const step=arr.length/n;const out=[];for(let i=0;i<n;i++)out.push(arr[Math.floor(i*step)]);return out}
 function translateFng(word,val){
   const map={'Extreme Fear':'Экстремальный страх','Fear':'Страх','Neutral':'Нейтрально','Greed':'Жадность','Extreme Greed':'Экстремальная жадность'};
@@ -3621,10 +3685,12 @@ function drawCryptoPage(){
       const priceStr=price>=100?fmtPrice(price,2):price>=1?fmtPrice(price,4):fmtPrice(price,6);
       const mcap=live?fmtCompactUsd(live.market_cap):coin.mcap;
       const hist=live?.sparkline_in_7d?.price?downsample(live.sparkline_in_7d.price,24):genHistory(coin.base,0.018,coin.id+'h');
+      const starred=(currentUser.watchlist||[]).includes(coin.id);
       return`<div class="market-card" onclick="openAssetDetail('crypto','${coin.id}')">
         <div class="market-card-hd">
           <div class="market-icon" style="background:${coin.color}20;font-size:20px">${coin.e}</div>
           <div style="flex:1"><div class="market-name">${coin.name}</div><div class="market-sym">${coin.sym} · #${live?.market_cap_rank||idx+1}</div></div>
+          <button class="watch-star${starred?' on':''}" title="В watchlist" onclick="event.stopPropagation();toggleWatch('${coin.id}')">${starred?'★':'☆'}</button>
           <div style="text-align:right"><div style="font-size:.65rem;color:var(--t3)">Капитализация</div><div style="font-size:.75rem;font-weight:700;color:var(--t1)">$${mcap}</div></div>
         </div>
         <div class="market-price">$${priceStr}</div>

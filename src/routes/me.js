@@ -26,6 +26,7 @@ const patchSchema = z.object({
   theme: z.enum(['dark', 'light']).optional(),
   accentHue: z.number().int().min(0).max(360).optional(),
   dashboardWidgets: z.array(z.object({ id: z.string(), visible: z.boolean() })).optional(),
+  watchlist: z.array(z.string().max(20)).max(50).optional(),
 });
 const FIELD_TO_COLUMN = {
   name: 'name',
@@ -36,7 +37,9 @@ const FIELD_TO_COLUMN = {
   theme: 'theme',
   accentHue: 'accent_hue',
   dashboardWidgets: 'dashboard_widgets',
+  watchlist: 'watchlist',
 };
+const JSON_FIELDS = new Set(['dashboardWidgets', 'watchlist']);
 router.patch('/', async (req, res) => {
   const parsed = patchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Некорректные данные', details: parsed.error.flatten() });
@@ -48,7 +51,7 @@ router.patch('/', async (req, res) => {
   entries.forEach(([field, value], i) => {
     const column = FIELD_TO_COLUMN[field];
     sets.push(`${column} = $${i + 1}`);
-    values.push(field === 'dashboardWidgets' ? JSON.stringify(value) : value);
+    values.push(JSON_FIELDS.has(field) ? JSON.stringify(value) : value);
   });
   values.push(req.userId);
 

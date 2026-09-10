@@ -163,6 +163,9 @@ ALTER TABLE recurring_rules ADD COLUMN IF NOT EXISTS account_id UUID
 -- ── Наблюдаемость: последний вход и журнал событий (для админ-панели) ──
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
 
+-- Watchlist: отслеживаемые монеты (массив id вроде ["BTC","ETH"]).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS watchlist JSONB;
+
 CREATE TABLE IF NOT EXISTS events (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
