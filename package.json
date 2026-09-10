@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "migrate": "node src/db/migrate.js",
-    "db:local": "node scripts/pg-dev.js"
+    "db:local": "node scripts/pg-dev.js",
+    "gen:icons": "node scripts/gen-icons.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -29,7 +30,8 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "embedded-postgres": "^18.4.0-beta.17"
+    "embedded-postgres": "^18.4.0-beta.17",
+    "sharp": "^0.35.4"
   },
   "allowScripts": {
     "@embedded-postgres/darwin-arm64@18.4.0-beta.17": true

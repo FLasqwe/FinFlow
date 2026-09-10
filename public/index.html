@@ -2,8 +2,20 @@
 <html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>FinFlow — Личные финансы</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.webmanifest"/>
+<meta name="theme-color" content="#0e1014"/>
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32"/>
+<link rel="icon" href="/icons/favicon-16.png" sizes="16x16"/>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="FinFlow"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+
 <style>
 /* ═══════════════════════════════════════════════════════
    GOOGLE FONTS
@@ -132,6 +144,23 @@
    RESET & BASE
 ═══════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* PWA / mobile app-feel */
+html { overscroll-behavior-y: none; }
+body { -webkit-tap-highlight-color: transparent; }
+@supports (top: env(safe-area-inset-top)) {
+  .topbar { height: calc(var(--topbar-h) + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); }
+  .sidebar { padding-top: env(safe-area-inset-top); }
+  .fab { bottom: calc(22px + env(safe-area-inset-bottom)); }
+}
+/* плашка «нет соединения» */
+.net-pill {
+  display: none; align-items: center; gap: 6px;
+  font-size: .68rem; font-weight: 700; color: #fff;
+  background: var(--red, #ef4444); border-radius: 999px;
+  padding: 3px 10px; margin-left: 10px; white-space: nowrap;
+}
+body.is-offline .net-pill { display: inline-flex; }
 html, body { height: 100%; }
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1276,6 +1305,7 @@ canvas { display: block; max-width: 100%; }
       <div class="topbar-l">
         <span class="topbar-title" id="page-title">Дашборд</span>
         <span class="topbar-month" id="topbar-month"></span>
+        <span class="net-pill" id="net-pill">● Офлайн</span>
       </div>
       <div class="topbar-r">
         <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Сменить тему">🌙</button>
@@ -1302,6 +1332,7 @@ canvas { display: block; max-width: 100%; }
               <button class="dd-item" onclick="goPage('markets');closeDD()"><span class="dd-item-ico">📈</span>Рынки</button>
               <button class="dd-item" onclick="goPage('crypto');closeDD()"><span class="dd-item-ico">₿</span>Крипто</button>
               <button class="dd-item" onclick="toggleTheme();closeDD()"><span class="dd-item-ico" id="dd-theme-ico">🌙</span><span id="dd-theme-txt">Светлая тема</span></button>
+              <button class="dd-item" id="dd-install" onclick="installApp()" style="display:none"><span class="dd-item-ico">📲</span>Установить приложение</button>
               <div class="dd-sep"></div>
               <button class="dd-item danger" onclick="doLogout()"><span class="dd-item-ico">🚪</span>Выйти</button>
             </div>
@@ -1569,6 +1600,8 @@ function hash(s){let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);
 let isDark=ld('ff_theme','dark')==='dark';
 function applyTheme(){
   document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc)tc.setAttribute('content',isDark?'#0e1014':'#eef0f4');
   const btn=document.getElementById('theme-btn');
   if(btn)btn.textContent=isDark?'🌙':'☀️';
   const ico=document.getElementById('dd-theme-ico');
@@ -1722,6 +1755,7 @@ async function verify2FA(){
 
 async function doLogout(){
   try{await api('/api/auth/logout',{method:'POST',auth:false})}catch{}
+  try{navigator.serviceWorker?.controller?.postMessage('CLEAR_API_CACHE')}catch{}
   setAccessToken(null);loginTempToken=null;
   currentUser=null;store.tx=[];store.budgets={};store.portfolio=[];
   applyAccent(252);closeDD();
@@ -1751,6 +1785,7 @@ async function enterApp(){
     showToast('⚠ Не удалось загрузить данные: '+(e.message||e),true);
   }
   goPage('dashboard');
+  if(typeof refreshInstallUI==='function')refreshInstallUI();
 }
 function avatarHTML(user,size='emoji'){
   if(user.photo)return`<img src="${user.photo}" alt="av"/>`;
@@ -2777,6 +2812,17 @@ function renderProfile(){
       </div>
     </div>
 
+    ${canInstall()?`
+    <!-- Install PWA -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Приложение</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-size:.72rem;color:var(--t3);line-height:1.5;flex:1;min-width:180px">Установи FinFlow на устройство — откроется как обычное приложение, без адресной строки, работает офлайн.</div>
+        <button class="btn btn-primary" onclick="installApp()">📲 Установить</button>
+      </div>
+      ${isIOS()?`<div style="font-size:.63rem;color:var(--t3);margin-top:8px">На iPhone: «Поделиться» ⬆️ → «На экран Домой».</div>`:''}
+    </div>`:''}
+
     <!-- Currency -->
     <div class="card" style="margin-bottom:14px">
       <div class="ps-title">Основная валюта</div>
@@ -3407,6 +3453,77 @@ document.addEventListener('keydown',e=>{
     else if(document.getElementById('form-reg').style.display!=='none')doRegister();
   }
 });
+
+/* ═══════════════════════════════════════════
+   PWA — service worker, установка, офлайн
+═══════════════════════════════════════════ */
+let deferredInstallPrompt=null;
+let _swUpdating=false;
+
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function isIOS(){
+  return /iP(hone|ad|od)/.test(navigator.platform||navigator.userAgent) ||
+         (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+}
+function canInstall(){
+  if(isStandalone())return false;
+  if(deferredInstallPrompt)return true;
+  return isIOS(); // на iOS системного промпта нет — покажем инструкцию
+}
+function refreshInstallUI(){
+  const dd=document.getElementById('dd-install');
+  if(dd)dd.style.display=canInstall()?'':'none';
+  if(currentUser&&curPage==='profile')render();
+}
+async function installApp(){
+  closeDD();
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{ await deferredInstallPrompt.userChoice; }catch{}
+    deferredInstallPrompt=null;
+    refreshInstallUI();
+    return;
+  }
+  if(isIOS()){
+    showToast('iPhone: кнопка «Поделиться» ⬆️ → «На экран Домой»');
+  }
+}
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredInstallPrompt=e; refreshInstallUI(); });
+window.addEventListener('appinstalled',()=>{ deferredInstallPrompt=null; showToast('✅ FinFlow установлен'); refreshInstallUI(); });
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register('/sw.js');
+      if(reg.waiting&&navigator.serviceWorker.controller)promptSwUpdate(reg.waiting);
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller)promptSwUpdate(nw);
+        });
+      });
+    }catch(err){/* SW не обязателен для работы */}
+  });
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(_swUpdating)location.reload();
+  });
+}
+function promptSwUpdate(worker){
+  const t=document.getElementById('toast');
+  if(!t)return;
+  clearTimeout(_tt);
+  t.className='toast show';
+  t.innerHTML='Доступна новая версия&nbsp;&nbsp;<button style="background:rgba(255,255,255,.25);border:0;color:#fff;font:inherit;font-weight:700;border-radius:6px;padding:2px 9px;cursor:pointer">Обновить</button>';
+  t.querySelector('button').onclick=()=>{ _swUpdating=true; worker.postMessage('SKIP_WAITING'); };
+}
+
+function updateOnlineStatus(){ document.body.classList.toggle('is-offline',!navigator.onLine); }
+window.addEventListener('online',()=>{ updateOnlineStatus(); showToast('🟢 Соединение восстановлено'); });
+window.addEventListener('offline',()=>{ updateOnlineStatus(); showToast('⚠ Нет соединения — данные могут быть устаревшими',true); });
+updateOnlineStatus();
 
 /* ═══════════════════════════════════════════
    INIT — восстановление сессии

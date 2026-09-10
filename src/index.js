@@ -50,10 +50,24 @@ app.use('/api/portfolio', portfolioRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-// ── статика: фронтенд FinFlow (public/index.html) ──────────
+// ── статика: фронтенд FinFlow + PWA (public/) ─────────────
 // Раздаётся с того же домена, что и API, — поэтому CORS не нужен, а httpOnly
 // refresh-cookie ходит как same-origin.
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(
+  express.static(path.join(__dirname, '..', 'public'), {
+    setHeaders(res, filePath) {
+      const base = path.basename(filePath);
+      if (base === 'sw.js' || base === 'index.html') {
+        // service worker и оболочку не кэшируем на уровне HTTP — иначе обновления не доедут
+        res.setHeader('Cache-Control', 'no-cache');
+      } else if (filePath.includes(`${path.sep}icons${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+      } else if (base === 'manifest.webmanifest') {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    },
+  })
+);
 
 // ── обработчик ошибок ──────────────────────────────────────
 app.use((err, req, res, next) => {

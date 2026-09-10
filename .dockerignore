@@ -1,0 +1,9 @@
+node_modules
+.pgdata
+.env
+.env.local
+.git
+.gitignore
+*.log
+.DS_Store
+scratchpad
