@@ -1348,6 +1348,39 @@ canvas { display: block; max-width: 100%; }
   .sheet-sep { height: 1px; background: var(--border); margin: 6px 8px; }
 }
 @keyframes sheetup { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+/* ── Отчёт по капиталу ── */
+#report-modal { align-items: start; }
+.report-sheet {
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r4);
+  max-width: 720px; width: 100%; max-height: calc(100vh - 40px); overflow-y: auto;
+  overscroll-behavior: contain; padding: 0;
+}
+.rp-wrap { padding: 26px 30px 34px; color: var(--t1); }
+.rp-h1 { font-size: 1.15rem; font-weight: 900; letter-spacing: -.01em; }
+.rp-sub { font-size: .72rem; color: var(--t3); margin-top: 2px; }
+.rp-big { font-size: 2rem; font-weight: 900; margin: 14px 0 2px; letter-spacing: -.02em; }
+.rp-sec { font-size: .62rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--t3); margin: 22px 0 8px; }
+.rp-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
+.rp-table td, .rp-table th { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.rp-table td:nth-child(2) { word-break: break-word; font-size: .68rem; }
+.rp-table th { font-size: .6rem; text-transform: uppercase; letter-spacing: .05em; color: var(--t3); font-weight: 700; }
+.rp-table td.num, .rp-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rp-toolbar { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 30px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--s1); z-index: 2; }
+.rp-foot { font-size: .62rem; color: var(--t3); margin-top: 24px; line-height: 1.5; }
+
+@media print {
+  body { background: #fff; }
+  body * { visibility: hidden !important; }
+  #report-modal, #report-modal * { visibility: visible !important; }
+  #report-modal { position: absolute; inset: 0; display: block !important; background: #fff; padding: 0; overflow: visible; }
+  .report-sheet { max-height: none; max-width: none; border: none; box-shadow: none; overflow: visible; background: #fff; }
+  .rp-toolbar { display: none !important; }
+  .rp-wrap { color: #111; padding: 0 8mm; }
+  .rp-wrap * { color: #111 !important; }
+  .rp-table td, .rp-table th { border-color: #ccc; }
+  .rp-big { color: #111 !important; }
+}
 </style>
 
 </head>
@@ -1729,6 +1762,19 @@ canvas { display: block; max-width: 100%; }
   <div class="modal" style="max-width:420px">
     <div class="modal-hd"><span class="modal-title">◆ Актив</span><button class="modal-close" onclick="closeWealthAssetModal()">✕</button></div>
     <div id="wealth-asset-body"></div>
+  </div>
+</div>
+
+<!-- CAPITAL REPORT MODAL -->
+<div class="overlay" id="report-modal" style="display:none" onclick="if(event.target===this)closeCapitalReport()">
+  <div class="report-sheet">
+    <div class="rp-toolbar report-noprint">
+      <button class="btn btn-primary" onclick="window.print()">🖨 Скачать PDF</button>
+      <button class="btn btn-ghost" onclick="exportCapitalCSV()">CSV</button>
+      <button class="btn btn-ghost" onclick="exportCapitalJSON()">JSON</button>
+      <button class="btn btn-ghost" style="margin-left:auto" onclick="closeCapitalReport()">Закрыть</button>
+    </div>
+    <div id="report-body"></div>
   </div>
 </div>
 
@@ -3820,6 +3866,7 @@ function renderCapital(){
       <button class="btn btn-primary" onclick="openWealthAssetModal()">＋ Добавить актив</button>
       <button class="btn btn-ghost" onclick="goPage('accounts')">💳 Счета</button>
       <button class="btn btn-ghost" onclick="goWallets()">🪙 Кошельки</button>
+      ${cd.order.length?`<button class="btn btn-ghost" onclick="openCapitalReport()">📄 Отчёт</button>`:''}
     </div>
 
     ${cd.order.length?`
@@ -3905,6 +3952,93 @@ async function deleteWealthAsset(id){
   if(!confirm('Удалить актив?'))return;
   try{ await api('/api/assets/'+id,{method:'DELETE'}); await reloadAssets(); closeWealthAssetModal(); render(); showToast('Актив удалён'); }
   catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ── Отчёт по капиталу (просмотр + печать в PDF + экспорт) ── */
+function closeCapitalReport(){const m=document.getElementById('report-modal');if(m)m.style.display='none'}
+function openCapitalReport(){
+  document.getElementById('report-body').innerHTML=renderCapitalReport();
+  document.getElementById('report-modal').style.display='grid';
+}
+function reportSources(){
+  const cd=capitalData();
+  const rows=[];
+  store.accounts.filter(a=>!a.archived).forEach(a=>rows.push({sec:'Счета',name:a.name,detail:accKind(a.kind).l,value:accountBalance(a)}));
+  (store.wallets||[]).forEach(w=>rows.push({sec:'Крипто-кошельки',name:w.label||walletChain(w.chain).name,detail:w.chain+' · '+w.address+(w.native!=null?` · ${fmtNative(w.native)} ${w.chain}`:''),value:w.usd!=null?usdTo(baseCurrency,w.usd):0}));
+  if(isPro())store.portfolio.forEach(h=>{try{const c=calcHolding(h);if(c.value)rows.push({sec:'Портфель',name:h.name||h.assetId||'Позиция',detail:(HOLDING_CLASS[h.type]||'other'),value:c.value});}catch{}});
+  (store.assets||[]).filter(a=>!a.archived).forEach(a=>rows.push({sec:'Ручные активы',name:a.name,detail:capClass(a.class).l+(a.note?' · '+a.note:''),value:convertAmount(a.value,a.currency||baseCurrency,baseCurrency)}));
+  return {cd,rows};
+}
+function renderCapitalReport(){
+  const {cd,rows}=reportSources();
+  const nwTotal=cd.total;
+  const hist=(store.networth&&store.networth.history)||[];
+  const pts=hist.map(p=>({day:p.day,v:convertAmount(p.total,p.currency||baseCurrency,baseCurrency)}));
+  let periodHtml='';
+  if(pts.length>=2){
+    const first=pts[0],last=pts[pts.length-1];
+    const d=last.v-first.v, pct=first.v!==0?d/Math.abs(first.v)*100:0, up=d>=0;
+    periodHtml=`<div style="font-size:.78rem;margin-top:4px;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${fmt(Math.abs(d))} (${pct.toFixed(1)}%) с ${new Date(first.day).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}</div>`;
+  }
+  const secOrder=['Счета','Крипто-кошельки','Портфель','Ручные активы'];
+  const bySec=s=>rows.filter(r=>r.sec===s);
+  const secTable=s=>{
+    const rs=bySec(s); if(!rs.length)return '';
+    return `<div class="rp-sec">${s} · ${fmt(rs.reduce((x,r)=>x+r.value,0))}</div>
+    <table class="rp-table"><tbody>
+      ${rs.map(r=>`<tr><td>${(r.name||'').replace(/</g,'&lt;')}</td><td style="color:var(--t3)">${(r.detail||'').replace(/</g,'&lt;')}</td><td class="num">${fmt(r.value)}</td></tr>`).join('')}
+    </tbody></table>`;
+  };
+  return `<div class="rp-wrap">
+    <div class="rp-h1">Отчёт по капиталу</div>
+    <div class="rp-sub">${(currentUser.name||currentUser.email)} · сформирован ${new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}</div>
+
+    <div class="rp-big">${fmt(nwTotal)}</div>
+    <div class="rp-sub">чистый капитал · ${rows.length} источников в ${cd.order.length} классах активов</div>
+    ${periodHtml}
+
+    <div class="rp-sec">Распределение по классам</div>
+    <table class="rp-table">
+      <thead><tr><th>Класс</th><th class="num">Сумма</th><th class="num">Доля</th></tr></thead>
+      <tbody>${cd.order.map(id=>`<tr><td>${capClass(id).e} ${capClass(id).l}</td><td class="num">${fmt(cd.buckets[id].sum)}</td><td class="num">${nwTotal>0?(cd.buckets[id].sum/nwTotal*100).toFixed(1):0}%</td></tr>`).join('')}</tbody>
+    </table>
+
+    ${pts.length>=2?`<div class="rp-sec">Динамика</div>${nwChartSvg(pts)}
+      <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--t3)"><span>${new Date(pts[0].day).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'2-digit'})}</span><span>сегодня</span></div>`:''}
+
+    ${secOrder.map(secTable).join('')}
+
+    <div class="rp-foot">Оценка в валюте профиля (${baseCurrency}) по текущим курсам CoinGecko и open.er-api.com на момент формирования. Балансы карт и наличных вводятся вручную. Документ носит информационный характер.<br>FinFlow · ${location.host}</div>
+  </div>`;
+}
+function exportCapitalCSV(){
+  if(!exportGate())return;
+  const {cd,rows}=reportSources();
+  const out=[['Раздел','Название','Детали','Сумма ('+baseCurrency+')']];
+  rows.forEach(r=>out.push([r.sec,r.name,r.detail,Math.round(r.value)]));
+  out.push([]);
+  out.push(['Класс активов','Сумма ('+baseCurrency+')','Доля %']);
+  cd.order.forEach(id=>out.push([capClass(id).l,Math.round(cd.buckets[id].sum),(cd.total>0?cd.buckets[id].sum/cd.total*100:0).toFixed(1)]));
+  out.push([]);
+  out.push(['Чистый капитал',Math.round(cd.total)]);
+  const csv=out.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlFile(`finflow_capital_${new Date().toISOString().slice(0,10)}.csv`,'\uFEFF'+csv,'text/csv;charset=utf-8');
+  showToast('📊 CSV сохранён');
+}
+function exportCapitalJSON(){
+  if(!exportGate())return;
+  const {cd,rows}=reportSources();
+  const data={
+    user:{name:currentUser.name,email:currentUser.email},
+    currency:baseCurrency,
+    generatedAt:new Date().toISOString(),
+    netWorth:Math.round(cd.total),
+    allocation:cd.order.map(id=>({class:id,label:capClass(id).l,amount:Math.round(cd.buckets[id].sum),pct:cd.total>0?+(cd.buckets[id].sum/cd.total*100).toFixed(2):0})),
+    sources:rows.map(r=>({section:r.sec,name:r.name,detail:r.detail,amount:Math.round(r.value)})),
+    history:((store.networth&&store.networth.history)||[]).map(p=>({day:p.day,total:Number(p.total),currency:p.currency})),
+  };
+  dlFile(`finflow_capital_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2),'application/json');
+  showToast('📄 JSON сохранён');
 }
 
 /* ═══════════════════════════════════════════
@@ -5347,7 +5481,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAlerts();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal();closeWalletModal();closeWealthAssetModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAlerts();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal();closeWalletModal();closeWealthAssetModal();closeCapitalReport()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();
