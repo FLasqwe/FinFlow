@@ -1439,18 +1439,27 @@ async function api(path,opts={}){
   return data;
 }
 
-async function tryRefresh(){
-  try{
-    const res=await fetch(API_BASE+'/api/auth/refresh',{method:'POST',credentials:'same-origin'});
-    if(!res.ok)return false;
-    const j=await res.json();
-    if(j&&j.accessToken){
-      setAccessToken(j.accessToken);
-      if(j.user)currentUser=mapUser(j.user);
-      return true;
-    }
-    return false;
-  }catch{return false}
+/* Обновление токена — single-flight: параллельные 401 (loadAllData шлёт 3 запроса
+   разом) должны дождаться ОДНОГО refresh, иначе ротация refresh-токена на сервере
+   сделает второй-третий запрос невалидными и выкинет из сессии. */
+let _refreshInFlight=null;
+function tryRefresh(){
+  if(_refreshInFlight)return _refreshInFlight;
+  _refreshInFlight=(async()=>{
+    try{
+      const res=await fetch(API_BASE+'/api/auth/refresh',{method:'POST',credentials:'same-origin'});
+      if(!res.ok)return false;
+      const j=await res.json();
+      if(j&&j.accessToken){
+        setAccessToken(j.accessToken);
+        if(j.user)currentUser=mapUser(j.user);
+        return true;
+      }
+      return false;
+    }catch{return false}
+  })();
+  _refreshInFlight.finally(()=>{_refreshInFlight=null});
+  return _refreshInFlight;
 }
 
 /* API-модель пользователя → модель, которую ждёт фронтенд.
