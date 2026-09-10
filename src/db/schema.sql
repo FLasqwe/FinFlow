@@ -272,3 +272,23 @@ CREATE TABLE IF NOT EXISTS goals (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+
+-- ── Ручные активы для картины капитала (наличные, металлы, недвижимость…) ──
+-- Всё, что не заводится как счёт / кошелёк / позиция портфеля. Значение вводит
+-- и обновляет пользователь вручную, в указанной валюте.
+CREATE TABLE IF NOT EXISTS assets (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  class       TEXT NOT NULL DEFAULT 'other'
+              CHECK (class IN ('cash','crypto','stocks','metals','realestate','business','other')),
+  value       NUMERIC(20,2) NOT NULL DEFAULT 0,
+  currency    TEXT NOT NULL DEFAULT 'USD',
+  note        TEXT,
+  icon        TEXT,
+  archived    BOOLEAN NOT NULL DEFAULT false,
+  sort        INTEGER NOT NULL DEFAULT 0,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id);
