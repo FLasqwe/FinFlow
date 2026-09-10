@@ -161,6 +161,13 @@ body { -webkit-tap-highlight-color: transparent; }
   padding: 3px 10px; margin-left: 10px; white-space: nowrap;
 }
 body.is-offline .net-pill { display: inline-flex; }
+
+/* Pro-гейтинг */
+.nav-btn.nav-locked { opacity: .55; }
+.nav-btn.nav-locked::after { content: '🔒'; font-size: .7em; margin-left: auto; opacity: .8; }
+.plan-badge { font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; letter-spacing: .04em; text-transform: uppercase; }
+.plan-badge.plan-pro { background: linear-gradient(135deg, hsl(var(--acc-h),80%,62%), hsl(calc(var(--acc-h) + 25),80%,66%)); color: #fff; }
+.plan-badge.plan-free { background: var(--s3, #2a2f3d); color: var(--t3); }
 html, body { height: 100%; }
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1330,6 +1337,7 @@ canvas { display: block; max-width: 100%; }
             </div>
             <div class="dd-body">
               <button class="dd-item" onclick="goPage('profile');closeDD()"><span class="dd-item-ico">👤</span>Профиль</button>
+              <button class="dd-item" onclick="goPage('billing');closeDD()"><span class="dd-item-ico">⭐</span>Тариф<span id="dd-plan-badge" class="plan-badge plan-free" style="margin-left:auto">Free</span></button>
               <button class="dd-item" onclick="goPage('markets');closeDD()"><span class="dd-item-ico">📈</span>Рынки</button>
               <button class="dd-item" onclick="goPage('crypto');closeDD()"><span class="dd-item-ico">₿</span>Крипто</button>
               <button class="dd-item" onclick="toggleTheme();closeDD()"><span class="dd-item-ico" id="dd-theme-ico">🌙</span><span id="dd-theme-txt">Светлая тема</span></button>
@@ -1519,8 +1527,13 @@ function mapUser(u){
     dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
     twofa:!!u.twofa,
     joinedAt:u.createdAt||new Date().toISOString(),
+    plan:u.plan||'free',
+    proUntil:u.proUntil||null,
+    promoDiscount:u.promoDiscount||null,
   };
 }
+function isPro(){return !!currentUser && currentUser.plan==='pro'}
+const PRO_PAGES=['portfolio','markets','crypto','recurring'];
 /* API-холдинг портфеля → фронтенд ждёт поле `e` вместо `icon` */
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
@@ -1531,10 +1544,11 @@ async function loadAllData(){
   // /api/transactions первым и отдельно: он же догоняет регулярные правила,
   // поэтому /api/recurring запрашиваем после него, чтобы nextDate был свежим.
   const txR=await api('/api/transactions');
+  const gate=(fallback)=>(e)=>{ if(e&&e.status===402)return fallback; throw e; }; // фича за пейволом → пусто
   const [budR,portR,recR]=await Promise.all([
     api('/api/budgets'),
-    api('/api/portfolio'),
-    api('/api/recurring'),
+    api('/api/portfolio').catch(gate({holdings:[]})),
+    api('/api/recurring').catch(gate({rules:[]})),
   ]);
   store.tx=txR.transactions||[];
   store.budgets=budR.budgets||{};
@@ -1806,6 +1820,7 @@ async function enterApp(){
   }catch(e){
     showToast('⚠ Не удалось загрузить данные: '+(e.message||e),true);
   }
+  updateProUI();
   goPage('dashboard');
   if(typeof refreshInstallUI==='function')refreshInstallUI();
 }
@@ -1866,12 +1881,24 @@ function tExp(txs){return txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.am
    NAV
 ═══════════════════════════════════════════ */
 function goPage(p){
+  // Фича за пейволом и тариф не Pro → ведём на экран «Тариф».
+  if(PRO_PAGES.includes(p)&&!isPro())p='billing';
   curPage=p;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
+}
+/* Замок на пунктах меню для free-тарифа + бейдж в меню аккаунта. */
+function updateProUI(){
+  const pro=isPro();
+  PRO_PAGES.forEach(pg=>{
+    const btn=document.querySelector(`.nav-btn[data-page="${pg}"]`);
+    if(btn)btn.classList.toggle('nav-locked',!pro);
+  });
+  const badge=document.getElementById('dd-plan-badge');
+  if(badge){badge.textContent=pro?'Pro':'Free';badge.className='plan-badge '+(pro?'plan-pro':'plan-free')}
 }
 function changeMonth(d){viewMonth+=d;if(viewMonth<0){viewMonth=11;viewYear--}if(viewMonth>11){viewMonth=0;viewYear++}updateMonthLabel();render()}
 function updateMonthLabel(){document.getElementById('month-lbl').textContent=MONTHS_S[viewMonth]+' '+viewYear;document.getElementById('topbar-month').textContent=MONTHS[viewMonth]+' '+viewYear}
@@ -1887,6 +1914,7 @@ function render(){
   else if(curPage==='transactions')el.innerHTML=renderTx(tx);
   else if(curPage==='budgets')el.innerHTML=renderBudgets(tx);
   else if(curPage==='recurring')el.innerHTML=renderRecurring();
+  else if(curPage==='billing')el.innerHTML=renderBilling();
   else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
   else if(curPage==='portfolio')renderPortfolio(el);
   else if(curPage==='markets')renderMarkets(el);
@@ -2380,6 +2408,71 @@ async function deleteRecurring(id){
     render();
     showToast('🗑 Правило удалено');
   }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ═══════════════════════════════════════════
+   ТАРИФ (подписка + промокоды)
+═══════════════════════════════════════════ */
+const PRO_FEATURES=[
+  '💼 Портфель, рынки, криптовалюты',
+  '↻ Регулярные транзакции',
+  '📤 Экспорт CSV / JSON / отчёт',
+  '∞ Без лимита транзакций (на free — 50 в месяц)',
+];
+function renderBilling(){
+  const pro=isPro();
+  const until=currentUser.proUntil?new Date(currentUser.proUntil):null;
+  const lifetime=until&&until.getFullYear()>=2099;
+  return `
+  <div class="profile-wrap" style="max-width:560px">
+    <div class="card" style="margin-bottom:14px;text-align:center;padding:22px">
+      <div style="font-size:2rem;margin-bottom:4px">${pro?'⭐':'🆓'}</div>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--t1)">${pro?'FinFlow Pro':'Бесплатный тариф'}</div>
+      <div style="font-size:.75rem;color:var(--t3);margin-top:4px">
+        ${pro?(lifetime?'Активен навсегда':'Активен до '+until.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}))
+             :'Портфель, рынки, регулярные платежи и экспорт — по подписке'}
+      </div>
+      ${currentUser.promoDiscount?`<div style="font-size:.7rem;color:var(--green);margin-top:6px">Скидка ${currentUser.promoDiscount}% на будущую оплату сохранена</div>`:''}
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Что даёт Pro</div>
+      ${PRO_FEATURES.map(x=>`<div style="font-size:.8rem;color:var(--t2);padding:5px 0;display:flex;gap:8px"><span>${pro?'✅':'•'}</span><span>${x}</span></div>`).join('')}
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="ps-title">Промокод</div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <input class="finput" id="promo-code" placeholder="Введи код" style="flex:1;text-transform:uppercase" onkeydown="if(event.key==='Enter')redeemPromo()"/>
+        <button class="btn btn-primary" onclick="redeemPromo()">Активировать</button>
+      </div>
+      <div class="ferr" id="promo-err" style="margin-top:6px"><span>⚠</span><span></span></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;opacity:.65">
+      <div class="ps-title">Оплата картой</div>
+      <p style="font-size:.72rem;color:var(--t3);line-height:1.5;margin-bottom:10px">Скоро. Пока Pro можно получить по промокоду.</p>
+      <button class="btn btn-ghost" disabled style="cursor:not-allowed">Оформить Pro — скоро</button>
+    </div>
+  </div>`;
+}
+async function redeemPromo(){
+  const inp=document.getElementById('promo-code');
+  const err=document.getElementById('promo-err');
+  err.classList.remove('show');
+  const code=(inp.value||'').trim();
+  if(!code){err.querySelector('span:last-child').textContent='Введи промокод';err.classList.add('show');return}
+  try{
+    const r=await api('/api/billing/redeem',{method:'POST',body:{code}});
+    currentUser.plan=r.plan;currentUser.proUntil=r.proUntil;currentUser.promoDiscount=r.promoDiscount;
+    showToast('✅ '+(r.message||'Промокод активирован'));
+    try{ await loadAllData(); }catch{}
+    updateProUI();
+    render();
+  }catch(e){
+    err.querySelector('span:last-child').textContent=e.message||'Не удалось активировать промокод';
+    err.classList.add('show');
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -3067,12 +3160,15 @@ function renderProfile(){
 
     <!-- Export -->
     <div class="card" style="margin-bottom:14px">
-      <div class="ps-title">Экспорт данных</div>
+      <div class="ps-title">Экспорт данных ${isPro()?'':'<span class="plan-badge plan-free" style="margin-left:4px">Pro</span>'}</div>
+      ${isPro()?`
       <div class="export-grid">
         <div class="export-card" onclick="exportCSV()"><div class="export-ico">📊</div><div class="export-name">CSV</div><div class="export-desc">Excel, Google Sheets</div></div>
         <div class="export-card" onclick="exportJSON()"><div class="export-ico">📄</div><div class="export-name">JSON</div><div class="export-desc">Резервная копия</div></div>
         <div class="export-card" onclick="exportTxt()"><div class="export-ico">📝</div><div class="export-name">Отчёт</div><div class="export-desc">Текстовый файл</div></div>
-      </div>
+      </div>`:`
+      <p style="font-size:.72rem;color:var(--t3);line-height:1.5;margin-bottom:10px">Выгрузка в CSV / JSON / текстовый отчёт доступна на тарифе Pro.</p>
+      <button class="btn btn-primary" onclick="goPage('billing')">Открыть тариф</button>`}
     </div>
 
     <!-- Danger zone -->
@@ -3229,7 +3325,9 @@ function dlFile(name,content,mime){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));
   a.download=name;a.click();URL.revokeObjectURL(a.href);
 }
+function exportGate(){if(!isPro()){showToast('Экспорт — на тарифе Pro',true);goPage('billing');return false}return true}
 function exportCSV(){
+  if(!exportGate())return;
   const tx=getTx();if(!tx.length){showToast('❌ Нет данных для экспорта',true);return}
   const rows=[['Дата','Тип','Категория','Сумма','Заметка'],...tx.map(t=>[t.date,t.type==='income'?'Доход':'Расход',getCat(t.category).l,t.amount,t.note||''])];
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
@@ -3237,11 +3335,13 @@ function exportCSV(){
   showToast('📊 CSV экспортирован');
 }
 function exportJSON(){
+  if(!exportGate())return;
   const data={user:{name:currentUser.name,email:currentUser.email},transactions:getTx(),budgets:getBudgets(),exportedAt:new Date().toISOString()};
   dlFile(`finflow_backup_${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(data,null,2),'application/json');
   showToast('📄 JSON экспортирован');
 }
 function exportTxt(){
+  if(!exportGate())return;
   const tx=getTx();if(!tx.length){showToast('❌ Нет данных',true);return}
   const inc=tInc(tx),exp=tExp(tx);
   const lines=[`FinFlow — Финансовый отчёт`,`Пользователь: ${currentUser.name} (${currentUser.email})`,`Дата экспорта: ${new Date().toLocaleDateString('ru-RU')}`,``,`ИТОГО: ${tx.length} транзакций`,`Доходы: ${fmt(inc)}`,`Расходы: ${fmt(exp)}`,`Баланс: ${fmt(inc-exp)}`,``,`— ТРАНЗАКЦИИ —`,...tx.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>`${t.date}  ${t.type==='income'?'+':'−'}${fmt(t.amount).padStart(14)}  ${getCat(t.category).l.padEnd(14)} ${t.note||''}`)];
@@ -3281,7 +3381,10 @@ async function submitTx(){
     const r=await api('/api/transactions',{method:'POST',body:payload});
     store.tx.unshift(r.transaction);
     render();
-  }catch(e){showToast('❌ Не удалось добавить: '+(e.message||e),true)}
+  }catch(e){
+    if(e.status===402){ showToast(e.message||'Лимит бесплатного тарифа',true); goPage('billing'); return; }
+    showToast('❌ Не удалось добавить: '+(e.message||e),true);
+  }
 }
 async function deleteTx(id){
   const prev=store.tx;

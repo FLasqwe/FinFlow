@@ -3,6 +3,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
 const { runRecurringForUser } = require('../recurring');
+const { isPro, FREE_TX_PER_MONTH } = require('../plan');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -61,6 +62,24 @@ router.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Некорректные данные', details: parsed.error.flatten() });
   const { type, amount, category, note, date } = parsed.data;
+
+  // Лимит free-тарифа: не больше FREE_TX_PER_MONTH ручных транзакций за календарный месяц.
+  // Авто-транзакции из регулярных правил идут мимо этого маршрута и не считаются.
+  const { rows: u } = await pool.query('SELECT pro_until FROM users WHERE id=$1', [req.userId]);
+  if (!isPro(u[0] || {})) {
+    const { rows: cnt } = await pool.query(
+      `SELECT count(*)::int AS n FROM transactions
+       WHERE user_id=$1 AND date >= date_trunc('month', CURRENT_DATE)`,
+      [req.userId]
+    );
+    if (cnt[0].n >= FREE_TX_PER_MONTH) {
+      return res.status(402).json({
+        error: `Лимит бесплатного тарифа — ${FREE_TX_PER_MONTH} транзакций в месяц. Оформи Pro, чтобы снять ограничение.`,
+        upgrade: true,
+      });
+    }
+  }
+
   const result = await pool.query(
     `INSERT INTO transactions (user_id, type, amount, category, note, date)
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,

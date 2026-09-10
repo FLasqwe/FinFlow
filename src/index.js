@@ -13,6 +13,7 @@ const transactionsRouter = require('./routes/transactions');
 const budgetsRouter = require('./routes/budgets');
 const portfolioRouter = require('./routes/portfolio');
 const recurringRouter = require('./routes/recurring');
+const billingRouter = require('./routes/billing');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use('/api/transactions', transactionsRouter);
 app.use('/api/budgets', budgetsRouter);
 app.use('/api/portfolio', portfolioRouter);
 app.use('/api/recurring', recurringRouter);
+app.use('/api/billing', billingRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 

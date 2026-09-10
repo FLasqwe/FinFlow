@@ -2,9 +2,11 @@ const express = require('express');
 const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
+const requirePro = require('../middleware/requirePro');
 
 const router = express.Router();
 router.use(requireAuth);
+router.use(requirePro); // портфель — фича тарифа Pro
 
 function toPublicHolding(row, lots) {
   return {

@@ -98,3 +98,29 @@ CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_rules(user_id);
 -- Ссылка транзакции на правило, которое её породило (NULL — создана вручную).
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS recurring_id UUID
   REFERENCES recurring_rules(id) ON DELETE SET NULL;
+
+-- ── Подписка (тариф Pro) ─────────────────────────────────────
+-- Pro активен, пока pro_until в будущем. «Навсегда» = дата далеко вперёд (2099).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_until      TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_source     TEXT;    -- 'promo' | 'manual' | платёжный провайдер
+ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_discount INTEGER; -- % скидки на будущую оплату (из percent-кода)
+
+CREATE TABLE IF NOT EXISTS promo_codes (
+  code        TEXT PRIMARY KEY,                       -- хранится в верхнем регистре
+  kind        TEXT NOT NULL CHECK (kind IN ('free_days','free_forever','percent')),
+  value       INTEGER,                                -- free_days: дней; percent: %; free_forever: NULL
+  max_uses    INTEGER,                                -- NULL — без лимита
+  used_count  INTEGER NOT NULL DEFAULT 0,
+  expires_at  TIMESTAMPTZ,                            -- срок годности самого кода
+  active      BOOLEAN NOT NULL DEFAULT true,
+  note        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS promo_redemptions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code        TEXT NOT NULL REFERENCES promo_codes(code) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (code, user_id)                              -- один код — один раз на пользователя
+);
