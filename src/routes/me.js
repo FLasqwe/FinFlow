@@ -98,6 +98,7 @@ router.post('/2fa/enable', async (req, res) => {
   if (!verifyTotp(parsed.data.code, secret)) return res.status(401).json({ error: 'Неверный код' });
 
   await pool.query('UPDATE users SET totp_enabled=true WHERE id=$1', [req.userId]);
+  require('../events').logEvent(req.userId, '2fa_enable');
   res.json({ ok: true });
 });
 

@@ -159,3 +159,15 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transfer_id UUID;
 -- С какого счёта регулярное правило создаёт транзакции (NULL — дефолтный счёт).
 ALTER TABLE recurring_rules ADD COLUMN IF NOT EXISTS account_id UUID
   REFERENCES accounts(id) ON DELETE SET NULL;
+
+-- ── Наблюдаемость: последний вход и журнал событий (для админ-панели) ──
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS events (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+  type       TEXT NOT NULL,        -- register | login | login_2fa | 2fa_enable | promo_redeem | account_create | tier_change
+  meta       JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);

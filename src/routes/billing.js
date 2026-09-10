@@ -3,6 +3,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
 const { planInfo, LIFETIME, TIER_LABEL, RANK, effectiveTier } = require('../plan');
+const { logEvent } = require('../events');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -96,6 +97,7 @@ router.post('/redeem', async (req, res) => {
     }
 
     await client.query('COMMIT');
+    logEvent(req.userId, 'promo_redeem', { code, kind: promo.kind, tier: grantTier });
     const plan = await currentPlan(req.userId);
     res.json({ ...plan, catalog: CATALOG, message });
   } catch (err) {

@@ -12,6 +12,7 @@ const {
   refreshExpiryDate,
   verifyTotp,
 } = require('../auth');
+const { logEvent } = require('../events');
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ const cookieOpts = () => ({
 });
 
 const { planInfo } = require('../plan');
+const { isAdminEmail } = require('../middleware/requireAdmin');
 
 function toPublicUser(row) {
   const p = planInfo(row);
@@ -46,6 +48,7 @@ function toPublicUser(row) {
     lifetime: p.lifetime,
     promoDiscount: p.promoDiscount,
     accountLimit: p.accountLimit,
+    isAdmin: isAdminEmail(row.email),
   };
 }
 
@@ -56,6 +59,7 @@ async function issueSession(res, userId) {
     'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1,$2,$3)',
     [userId, hashRefreshToken(refreshToken), refreshExpiryDate()]
   );
+  pool.query('UPDATE users SET last_seen=now() WHERE id=$1', [userId]).catch(() => {});
   res.cookie(REFRESH_COOKIE, refreshToken, cookieOpts());
   return accessToken;
 }
@@ -84,6 +88,7 @@ router.post('/register', async (req, res) => {
   );
   const user = result.rows[0];
   const accessToken = await issueSession(res, user.id);
+  logEvent(user.id, 'register', { email: user.email });
   res.status(201).json({ accessToken, user: toPublicUser(user) });
 });
 
@@ -108,6 +113,7 @@ router.post('/login', async (req, res) => {
   }
 
   const accessToken = await issueSession(res, user.id);
+  logEvent(user.id, 'login');
   res.json({ accessToken, user: toPublicUser(user) });
 });
 
@@ -132,6 +138,7 @@ router.post('/2fa/verify', async (req, res) => {
   }
 
   const accessToken = await issueSession(res, user.id);
+  logEvent(user.id, 'login_2fa');
   res.json({ accessToken, user: toPublicUser(user) });
 });
 

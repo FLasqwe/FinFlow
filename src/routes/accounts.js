@@ -3,6 +3,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
 const { accountLimit, effectiveTier } = require('../plan');
+const { logEvent } = require('../events');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -93,6 +94,7 @@ router.post('/', async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
     [req.userId, d.name, d.kind, d.currency.toUpperCase(), d.startBalance ?? 0, d.icon || null, d.color || null, count]
   );
+  logEvent(req.userId, 'account_create', { kind: d.kind });
   res.status(201).json({ account: toPublicAccount(rows[0]) });
 });
 

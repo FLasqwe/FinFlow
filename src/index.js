@@ -15,6 +15,7 @@ const portfolioRouter = require('./routes/portfolio');
 const recurringRouter = require('./routes/recurring');
 const billingRouter = require('./routes/billing');
 const accountsRouter = require('./routes/accounts');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use('/api/portfolio', portfolioRouter);
 app.use('/api/recurring', recurringRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/accounts', accountsRouter);
+app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
