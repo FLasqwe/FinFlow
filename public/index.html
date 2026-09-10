@@ -1443,6 +1443,7 @@ canvas { display: block; max-width: 100%; }
       <button class="nav-btn" data-page="portfolio" onclick="goPage('portfolio')"><span class="nav-ico">💼</span>Портфель</button>
       <button class="nav-btn" data-page="markets" onclick="goPage('markets')"><span class="nav-ico">📈</span>Рынки</button>
       <button class="nav-btn" data-page="crypto" onclick="goPage('crypto')"><span class="nav-ico">₿</span>Криптовалюты</button>
+      <button class="nav-btn" data-page="simulator" onclick="goSim()"><span class="nav-ico">🎮</span>Симулятор</button>
       <div class="nav-lbl">Аккаунт</div>
       <button class="nav-btn" data-page="profile" onclick="goPage('profile')"><span class="nav-ico">👤</span>Профиль</button>
     </nav>
@@ -1528,6 +1529,7 @@ canvas { display: block; max-width: 100%; }
     <button class="sheet-item" data-page="portfolio" onclick="moreGo('portfolio')"><span class="si-ico">💼</span>Портфель</button>
     <button class="sheet-item" data-page="markets" onclick="moreGo('markets')"><span class="si-ico">📈</span>Рынки</button>
     <button class="sheet-item" data-page="crypto" onclick="moreGo('crypto')"><span class="si-ico">₿</span>Криптовалюты</button>
+    <button class="sheet-item" data-page="simulator" onclick="goSim()"><span class="si-ico">🎮</span>Симулятор торговли</button>
     <div class="sheet-sep"></div>
     <button class="sheet-item" data-page="billing" onclick="moreGo('billing')"><span class="si-ico">⭐</span>Тариф</button>
     <button class="sheet-item" data-page="profile" onclick="moreGo('profile')"><span class="si-ico">👤</span>Профиль</button>
@@ -1660,6 +1662,14 @@ canvas { display: block; max-width: 100%; }
   </div>
 </div>
 
+<!-- SIM TRADE MODAL -->
+<div class="overlay" id="sim-trade-modal" style="display:none" onclick="if(event.target===this)closeSimTradeModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><span class="modal-title">🎮 Сделка (симулятор)</span><button class="modal-close" onclick="closeSimTradeModal()">✕</button></div>
+    <div id="sim-trade-body"></div>
+  </div>
+</div>
+
 <button class="fab" onclick="openAddModal()" title="Добавить">+</button>
 <div class="toast" id="toast"></div>
 
@@ -1786,7 +1796,7 @@ function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -2160,7 +2170,7 @@ function goPage(p){
     b.classList.toggle('on', b.dataset.page===p || (b.dataset.page==='__more' && !MOBILEBAR_PAGES.includes(p)));
   });
   document.querySelectorAll('.sheet-item[data-page]').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф',admin:'Админка',support:'Поддержка'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',simulator:'Симулятор',profile:'Профиль',billing:'Тариф',admin:'Админка',support:'Поддержка'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
@@ -2206,6 +2216,7 @@ function render(){
   else if(curPage==='accounts')el.innerHTML=renderAccounts();
   else if(curPage==='goals')el.innerHTML=renderGoals();
   else if(curPage==='support')el.innerHTML=renderSupport();
+  else if(curPage==='simulator')el.innerHTML=renderSim();
   else if(curPage==='admin')el.innerHTML=renderAdmin();
   else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
   else if(curPage==='portfolio')renderPortfolio(el);
@@ -3156,6 +3167,136 @@ async function callHuman(){
     store.support=r;render();supportScrollBottom();
     showToast('🙋 Поддержка уведомлена');
   }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ═══════════════════════════════════════════
+   СИМУЛЯТОР ТОРГОВЛИ (бумажные деньги, реальные котировки)
+═══════════════════════════════════════════ */
+const SIM_COINS=['BTC','ETH','BNB','SOL','XRP','ADA','DOGE','TON','AVAX','LINK','DOT','MATIC'];
+function simCoinMeta(sym){ return CRYPTOS.find(c=>c.id===sym)||{e:'●',name:sym,sym} }
+let _simPoll=null;
+async function goSim(){
+  closeMoreSheet();closeDD();
+  goPage('simulator');
+  await refreshSim();
+  clearInterval(_simPoll);
+  _simPoll=setInterval(()=>{ if(curPage==='simulator')refreshSim(true); else clearInterval(_simPoll); }, 15000);
+}
+async function refreshSim(silent){
+  try{ store.sim=await api('/api/sim'); }
+  catch(e){ if(!silent)store.sim={error:e.message||String(e)}; }
+  if(curPage==='simulator')render();
+}
+function simUSD(n){ return '$'+fmtNum(n) }
+function renderSim(){
+  const s=store.sim;
+  if(!s)return `<div class="empty" style="padding:50px 0"><div class="empty-ico">🎮</div><div class="empty-t">Загрузка…</div></div>`;
+  if(s.error)return `<div class="card"><div class="ferr show"><span>⚠</span><span>${s.error}</span></div></div>`;
+  const up=s.totalPnl>=0;
+  const posRows=s.positions.map(p=>{
+    const m=simCoinMeta(p.coin); const u=p.pnl>=0;
+    return `<div class="card card-sm" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div class="tx-cat" style="background:#8884;font-size:16px">${m.e}</div>
+      <div style="flex:1;min-width:0">
+        <div class="tx-name">${m.name}</div>
+        <div class="tx-meta">${p.qty.toFixed(p.qty<1?6:3)} ${p.coin} · вход $${fmtByMagnitude(p.avgPrice)}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tx-amt">${simUSD(p.value)}</div>
+        <div style="font-size:.66rem;font-weight:700;color:${u?'var(--green)':'var(--red)'}">${u?'+':'−'}${simUSD(Math.abs(p.pnl))} (${p.pnlPct.toFixed(2)}%)</div>
+      </div>
+      <button class="btn btn-ghost" style="font-size:.68rem;padding:4px 9px" onclick="openSimTrade('sell','${p.coin}')">Продать</button>
+    </div>`;
+  }).join('');
+  return `
+  <div style="max-width:640px">
+    <div class="card nw-hero" style="cursor:default;background:linear-gradient(135deg,hsl(150,45%,20%),hsl(190,45%,24%))">
+      <div class="nw-hero-label">Виртуальный счёт</div>
+      <div class="nw-hero-value">${simUSD(s.totalValue)}</div>
+      <div class="nw-hero-row">
+        <span>💵 Свободно <b>${simUSD(s.cash)}</b></span>
+        <span>📊 В позициях <b>${simUSD(s.posValue)}</b></span>
+        <span>P&L <b style="color:${up?'#7CFFB0':'#ff9a9a'}">${up?'+':'−'}${simUSD(Math.abs(s.totalPnl))} (${s.totalPnlPct.toFixed(2)}%)</b></span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin:12px 0">
+      <button class="btn btn-primary" style="flex:1" onclick="openSimTrade('buy')">＋ Купить</button>
+      <button class="btn btn-ghost" onclick="simReset()">Сбросить</button>
+    </div>
+    <p style="font-size:.66rem;color:var(--t3);line-height:1.5;margin-bottom:14px">Тренировочный счёт на виртуальные $${fmtNum(s.startCash)}. Котировки реальные (CoinGecko), деньги — нет. Статистика: ${s.stats.trades} сделок, закрыто ${s.stats.closed}, прибыльных ${s.stats.wins} (${s.stats.winRate}%).</p>
+
+    ${s.positions.length?`<div class="ps-title" style="margin-bottom:8px">Позиции</div>${posRows}`:`<div class="empty" style="padding:30px 0"><div class="empty-ico">📈</div><div class="empty-t">Нет открытых позиций</div><p style="font-size:.72rem;color:var(--t3);margin-top:6px">Нажми «Купить», выбери монету и сумму.</p></div>`}
+
+    ${s.trades.length?`<div class="ps-title" style="margin:16px 0 8px">История</div>
+    <div class="card card-sm">${s.trades.map(t=>{
+      const m=simCoinMeta(t.coin);
+      const pnlTxt=t.pnl!=null?` · <span style="color:${t.pnl>=0?'var(--green)':'var(--red)'}">${t.pnl>=0?'+':'−'}${simUSD(Math.abs(t.pnl))}</span>`:'';
+      return `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--t2)">${t.side==='buy'?'🟢 Купил':'🔴 Продал'} ${t.qty.toFixed(t.qty<1?5:2)} ${m.sym} @ $${fmtByMagnitude(t.price)}${pnlTxt}</span>
+        <span style="color:var(--t3)">${new Date(t.createdAt).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</span>
+      </div>`;
+    }).join('')}</div>`:''}
+  </div>`;
+}
+let simTradeCtx={side:'buy',coin:'BTC'};
+function openSimTrade(side,coin){
+  simTradeCtx={side,coin:coin||'BTC'};
+  const s=store.sim;
+  const body=document.getElementById('sim-trade-body');
+  if(side==='buy'){
+    body.innerHTML=`
+      <div style="margin-bottom:11px"><label class="flbl">Монета</label>
+        <select class="finput" id="st-coin">${SIM_COINS.map(c=>{const m=simCoinMeta(c);return `<option value="${c}">${m.e} ${m.name}</option>`}).join('')}</select>
+      </div>
+      <div style="margin-bottom:11px"><label class="flbl">Сумма ($) — свободно ${simUSD(s.cash)}</label>
+        <input class="finput" type="number" step="any" id="st-usd" placeholder="0"/>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          ${[100,500,1000].map(v=>`<button class="btn btn-ghost" style="flex:1;font-size:.7rem;padding:4px" onclick="document.getElementById('st-usd').value=${v}">$${v}</button>`).join('')}
+          <button class="btn btn-ghost" style="flex:1;font-size:.7rem;padding:4px" onclick="document.getElementById('st-usd').value=${Math.floor(s.cash)}">Всё</button>
+        </div>
+      </div>
+      <div class="ferr" id="st-err" style="margin-bottom:8px"><span>⚠</span><span></span></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="submitSimTrade()">Купить</button>`;
+    setTimeout(()=>{const c=document.getElementById('st-coin');if(c)c.value=simTradeCtx.coin;},20);
+  }else{
+    const p=s.positions.find(x=>x.coin===coin);
+    const m=simCoinMeta(coin);
+    body.innerHTML=`
+      <p style="font-size:.8rem;color:var(--t2);margin-bottom:10px">${m.e} <b style="color:var(--t1)">${m.name}</b> — ${p?p.qty.toFixed(6):'0'} ${coin}, сейчас ${simUSD(p?p.value:0)}</p>
+      <label class="flbl">Продать количество (${coin})</label>
+      <input class="finput" type="number" step="any" id="st-qty" placeholder="${p?p.qty:0}"/>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        ${[25,50,100].map(pct=>`<button class="btn btn-ghost" style="flex:1;font-size:.7rem;padding:4px" onclick="document.getElementById('st-qty').value=${p?(p.qty*pct/100):0}">${pct}%</button>`).join('')}
+      </div>
+      <div class="ferr" id="st-err" style="margin-top:8px"><span>⚠</span><span></span></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;margin-top:8px" onclick="submitSimTrade()">Продать</button>`;
+  }
+  document.getElementById('sim-trade-modal').style.display='grid';
+}
+function closeSimTradeModal(){const m=document.getElementById('sim-trade-modal');if(m)m.style.display='none'}
+async function submitSimTrade(){
+  const err=document.getElementById('st-err');err.classList.remove('show');
+  const fail=m=>{err.querySelector('span:last-child').textContent=m;err.classList.add('show')};
+  try{
+    if(simTradeCtx.side==='buy'){
+      const coin=document.getElementById('st-coin').value;
+      const usd=parseFloat((document.getElementById('st-usd').value||'').replace(',','.'));
+      if(!usd||usd<=0)return fail('Введи сумму');
+      store.sim=await api('/api/sim/buy',{method:'POST',body:{coin,usd}});
+    }else{
+      const qty=parseFloat((document.getElementById('st-qty').value||'').replace(',','.'));
+      if(!qty||qty<=0)return fail('Введи количество');
+      store.sim=await api('/api/sim/sell',{method:'POST',body:{coin:simTradeCtx.coin,qty}});
+    }
+    closeSimTradeModal();haptic(12);render();
+    showToast('✅ Сделка исполнена');
+  }catch(e){ fail(e.message||'Не удалось') }
+}
+async function simReset(){
+  if(!confirm('Сбросить симулятор? Позиции и история очистятся, счёт вернётся к $10 000.'))return;
+  try{ store.sim=await api('/api/sim/reset',{method:'POST'}); render(); showToast('🔄 Симулятор сброшен'); }
+  catch(e){ showToast('❌ '+(e.message||e),true) }
 }
 
 /* ═══════════════════════════════════════════
@@ -4598,7 +4739,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

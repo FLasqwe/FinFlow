@@ -211,6 +211,34 @@ CREATE TABLE IF NOT EXISTS support_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_support_messages_thread ON support_messages(thread_id, created_at);
 
+-- ── Симулятор торговли (бумажные деньги, реальные котировки) ──
+CREATE TABLE IF NOT EXISTS sim_accounts (
+  user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  cash        NUMERIC(20,2) NOT NULL DEFAULT 10000,
+  start_cash  NUMERIC(20,2) NOT NULL DEFAULT 10000,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reset_at    TIMESTAMPTZ
+);
+CREATE TABLE IF NOT EXISTS sim_positions (
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  coin        TEXT NOT NULL,
+  qty         NUMERIC(30,10) NOT NULL,
+  avg_price   NUMERIC(20,8) NOT NULL,
+  PRIMARY KEY (user_id, coin)
+);
+CREATE TABLE IF NOT EXISTS sim_trades (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  coin        TEXT NOT NULL,
+  side        TEXT NOT NULL CHECK (side IN ('buy','sell')),
+  qty         NUMERIC(30,10) NOT NULL,
+  price       NUMERIC(20,8) NOT NULL,
+  usd         NUMERIC(20,2) NOT NULL,
+  pnl         NUMERIC(20,2),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_sim_trades_user ON sim_trades(user_id, created_at DESC);
+
 -- ── Цели накоплений (тариф Premium) ─────────────────────────
 CREATE TABLE IF NOT EXISTS goals (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
