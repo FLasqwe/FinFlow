@@ -74,3 +74,27 @@ CREATE TABLE IF NOT EXISTS portfolio_lots (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_lots_holding ON portfolio_lots(holding_id);
+
+-- Регулярные транзакции: правило, по которому периодически создаются обычные транзакции.
+CREATE TABLE IF NOT EXISTS recurring_rules (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type          TEXT NOT NULL CHECK (type IN ('income','expense')),
+  amount        NUMERIC(18,2) NOT NULL CHECK (amount > 0),
+  category      TEXT NOT NULL,
+  note          TEXT,
+  cadence       TEXT NOT NULL CHECK (cadence IN ('weekly','monthly','yearly')),
+  day_of_month  INTEGER CHECK (day_of_month BETWEEN 1 AND 31),   -- для monthly/yearly
+  day_of_week   INTEGER CHECK (day_of_week BETWEEN 0 AND 6),     -- для weekly (0 = воскресенье)
+  month_of_year INTEGER CHECK (month_of_year BETWEEN 1 AND 12),  -- для yearly
+  start_date    DATE NOT NULL,
+  end_date      DATE,
+  last_run      DATE,                 -- по какую дату уже созданы вхождения
+  active        BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_rules(user_id);
+
+-- Ссылка транзакции на правило, которое её породило (NULL — создана вручную).
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS recurring_id UUID
+  REFERENCES recurring_rules(id) ON DELETE SET NULL;

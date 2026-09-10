@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
+const { runRecurringForUser } = require('../recurring');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -14,12 +15,21 @@ function toPublicTx(row) {
     category: row.category,
     note: row.note,
     date: row.date, // строка 'YYYY-MM-DD' (см. types.setTypeParser в db/pool.js)
+    recurringId: row.recurring_id || null,
   };
 }
 
 // ── GET /api/transactions ────────────────────────────────
 // Без параметров — вся история. ?year=2026&month=9 — только один месяц (month: 1-12).
 router.get('/', async (req, res) => {
+  // Догоняем регулярные правила: создаём набежавшие транзакции до сегодня.
+  try {
+    await runRecurringForUser(req.userId);
+  } catch (err) {
+    console.error('recurring materialization failed:', err.message);
+    // не роняем список транзакций из-за регулярок
+  }
+
   const { year, month } = req.query;
   let result;
   if (year && month) {
