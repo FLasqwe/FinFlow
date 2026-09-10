@@ -23,6 +23,7 @@ function toPublicRule(row) {
     startDate: row.start_date,
     endDate: row.end_date,
     active: row.active,
+    accountId: row.account_id || null,
     nextDate: row.active ? nextDate(row) : null,
   };
 }
@@ -40,6 +41,7 @@ const baseFields = {
   startDate: z.string().regex(DATE_RE),
   endDate: z.string().regex(DATE_RE).nullable().optional(),
   active: z.boolean().optional(),
+  accountId: z.string().uuid().nullable().optional(),
 };
 
 function requireCadenceFields(data, ctx) {
@@ -70,15 +72,19 @@ router.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Некорректные данные', details: parsed.error.flatten() });
   const d = parsed.data;
+  if (d.accountId) {
+    const own = await pool.query('SELECT 1 FROM accounts WHERE id=$1 AND user_id=$2', [d.accountId, req.userId]);
+    if (!own.rowCount) return res.status(400).json({ error: 'Счёт не найден' });
+  }
   const { rows } = await pool.query(
     `INSERT INTO recurring_rules
-       (user_id, type, amount, category, note, cadence, day_of_month, day_of_week, month_of_year, start_date, end_date, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       (user_id, type, amount, category, note, cadence, day_of_month, day_of_week, month_of_year, start_date, end_date, active, account_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING *`,
     [
       req.userId, d.type, d.amount, d.category, d.note || null, d.cadence,
       d.dayOfMonth ?? null, d.dayOfWeek ?? null, d.monthOfYear ?? null,
-      d.startDate, d.endDate ?? null, d.active ?? true,
+      d.startDate, d.endDate ?? null, d.active ?? true, d.accountId ?? null,
     ]
   );
   res.status(201).json({ rule: toPublicRule(rows[0]) });
@@ -93,7 +99,7 @@ const patchSchema = z.object({
 const FIELD_TO_COLUMN = {
   type: 'type', amount: 'amount', category: 'category', note: 'note', cadence: 'cadence',
   dayOfMonth: 'day_of_month', dayOfWeek: 'day_of_week', monthOfYear: 'month_of_year',
-  startDate: 'start_date', endDate: 'end_date', active: 'active',
+  startDate: 'start_date', endDate: 'end_date', active: 'active', accountId: 'account_id',
 };
 router.patch('/:id', async (req, res) => {
   const parsed = patchSchema.safeParse(req.body);

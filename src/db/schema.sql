@@ -132,3 +132,30 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (code, user_id)                              -- один код — один раз на пользователя
 );
+
+-- ── Счета и карты ────────────────────────────────────────────
+-- Баланс счёта = start_balance + Σ(доходы по счёту) − Σ(расходы по счёту).
+CREATE TABLE IF NOT EXISTS accounts (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  kind          TEXT NOT NULL DEFAULT 'cash' CHECK (kind IN ('card','cash','bank','savings','crypto','other')),
+  currency      TEXT NOT NULL DEFAULT 'RUB',
+  start_balance NUMERIC(18,2) NOT NULL DEFAULT 0,
+  icon          TEXT,
+  color         TEXT,
+  archived      BOOLEAN NOT NULL DEFAULT false,
+  sort          INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
+
+-- Привязка транзакции к счёту (NULL — не привязана; подхватится дефолтным счётом).
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_id UUID
+  REFERENCES accounts(id) ON DELETE SET NULL;
+-- Обе половины перевода между счетами делят transfer_id (для будущих переводов).
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transfer_id UUID;
+
+-- С какого счёта регулярное правило создаёт транзакции (NULL — дефолтный счёт).
+ALTER TABLE recurring_rules ADD COLUMN IF NOT EXISTS account_id UUID
+  REFERENCES accounts(id) ON DELETE SET NULL;

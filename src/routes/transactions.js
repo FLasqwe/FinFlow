@@ -17,6 +17,8 @@ function toPublicTx(row) {
     note: row.note,
     date: row.date, // строка 'YYYY-MM-DD' (см. types.setTypeParser в db/pool.js)
     recurringId: row.recurring_id || null,
+    accountId: row.account_id || null,
+    transferId: row.transfer_id || null,
   };
 }
 
@@ -57,11 +59,23 @@ const createSchema = z.object({
   category: z.string().min(1).max(40),
   note: z.string().max(200).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  accountId: z.string().uuid().optional(),
 });
 router.post('/', async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Некорректные данные', details: parsed.error.flatten() });
-  const { type, amount, category, note, date } = parsed.data;
+  const { type, amount, category, note, date, accountId } = parsed.data;
+
+  // Счёт: указанный (с проверкой владельца) либо дефолтный (первый).
+  let acctId = null;
+  if (accountId) {
+    const own = await pool.query('SELECT id FROM accounts WHERE id=$1 AND user_id=$2', [accountId, req.userId]);
+    if (!own.rowCount) return res.status(400).json({ error: 'Счёт не найден' });
+    acctId = accountId;
+  } else {
+    const def = await pool.query('SELECT id FROM accounts WHERE user_id=$1 ORDER BY sort, created_at LIMIT 1', [req.userId]);
+    acctId = def.rows[0]?.id || null;
+  }
 
   // Лимит free-тарифа: не больше FREE_TX_PER_MONTH ручных транзакций за календарный месяц.
   // Авто-транзакции из регулярных правил идут мимо этого маршрута и не считаются.
@@ -81,9 +95,9 @@ router.post('/', async (req, res) => {
   }
 
   const result = await pool.query(
-    `INSERT INTO transactions (user_id, type, amount, category, note, date)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [req.userId, type, amount, category, note || null, date]
+    `INSERT INTO transactions (user_id, type, amount, category, note, date, account_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [req.userId, type, amount, category, note || null, date, acctId]
   );
   res.status(201).json({ transaction: toPublicTx(result.rows[0]) });
 });

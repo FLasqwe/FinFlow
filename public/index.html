@@ -1295,6 +1295,7 @@ canvas { display: block; max-width: 100%; }
       <div class="nav-lbl">Главное</div>
       <button class="nav-btn on" data-page="dashboard" onclick="goPage('dashboard')"><span class="nav-ico">◈</span>Дашборд</button>
       <button class="nav-btn" data-page="transactions" onclick="goPage('transactions')"><span class="nav-ico">↕</span>Транзакции<span class="nav-badge" id="tx-badge" style="display:none">0</span></button>
+      <button class="nav-btn" data-page="accounts" onclick="goPage('accounts')"><span class="nav-ico">▤</span>Счета</button>
       <button class="nav-btn" data-page="budgets" onclick="goPage('budgets')"><span class="nav-ico">◎</span>Бюджеты</button>
       <button class="nav-btn" data-page="recurring" onclick="goPage('recurring')"><span class="nav-ico">↻</span>Регулярные</button>
       <button class="nav-btn" data-page="analytics" onclick="goPage('analytics')"><span class="nav-ico">▣</span>Аналитика</button>
@@ -1374,7 +1375,10 @@ canvas { display: block; max-width: 100%; }
       <div><label class="flbl">Дата</label><input class="finput" type="date" id="f-date"/></div>
     </div>
     <div style="margin-bottom:11px"><label class="flbl">Категория</label><div class="cat-grid" id="cat-grid"></div></div>
-    <div style="margin-bottom:13px"><label class="flbl">Заметка</label><input class="finput" type="text" id="f-note" placeholder="Необязательно..." maxlength="80"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+      <div><label class="flbl">Счёт</label><select class="finput" id="f-account"></select></div>
+      <div><label class="flbl">Заметка</label><input class="finput" type="text" id="f-note" placeholder="Необязательно..." maxlength="80"/></div>
+    </div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;font-size:.83rem" onclick="submitTx()">Добавить запись</button>
   </div>
 </div>
@@ -1427,6 +1431,14 @@ canvas { display: block; max-width: 100%; }
   <div class="modal" style="max-width:460px">
     <div class="modal-hd"><span class="modal-title">Регулярная транзакция</span><button class="modal-close" onclick="closeRecurringModal()">✕</button></div>
     <div id="recurring-modal-body"></div>
+  </div>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div class="overlay" id="account-modal" style="display:none" onclick="if(event.target===this)closeAccountModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><span class="modal-title">Счёт</span><button class="modal-close" onclick="closeAccountModal()">✕</button></div>
+    <div id="account-modal-body"></div>
   </div>
 </div>
 
@@ -1551,11 +1563,12 @@ const PRO_PAGES=['portfolio','markets','crypto','recurring'];
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],billing:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],billing:null};
 
 async function loadAllData(){
-  // /api/transactions первым и отдельно: он же догоняет регулярные правила,
-  // поэтому /api/recurring запрашиваем после него, чтобы nextDate был свежим.
+  // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
+  // /api/transactions отдельно — он догоняет регулярные правила.
+  await api('/api/accounts').then(r=>{store.accounts=r.accounts||[]}).catch(()=>{store.accounts=[]});
   const txR=await api('/api/transactions');
   const gate=(fallback)=>(e)=>{ if(e&&e.status===402)return fallback; throw e; }; // фича за пейволом → пусто
   const [budR,portR,recR,billR]=await Promise.all([
@@ -1569,6 +1582,10 @@ async function loadAllData(){
   store.portfolio=(portR.holdings||[]).map(mapHolding);
   store.recurring=recR.rules||[];
   store.billing=billR;
+}
+async function reloadAccounts(){
+  const r=await api('/api/accounts');
+  store.accounts=r.accounts||[];
 }
 async function reloadPortfolio(){
   const r=await api('/api/portfolio');
@@ -1900,7 +1917,7 @@ function goPage(p){
   if(PRO_PAGES.includes(p)&&!isPro())p='billing';
   curPage=p;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
@@ -1934,6 +1951,7 @@ function render(){
   else if(curPage==='budgets')el.innerHTML=renderBudgets(tx);
   else if(curPage==='recurring')el.innerHTML=renderRecurring();
   else if(curPage==='billing')el.innerHTML=renderBilling();
+  else if(curPage==='accounts')el.innerHTML=renderAccounts();
   else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
   else if(curPage==='portfolio')renderPortfolio(el);
   else if(curPage==='markets')renderMarkets(el);
@@ -1949,6 +1967,7 @@ function render(){
 ═══════════════════════════════════════════ */
 const ALL_WIDGETS=[
   {id:'stats',name:'Карточки итогов',icon:'💰'},
+  {id:'accounts',name:'Счета и капитал',icon:'▤'},
   {id:'areaChart',name:'Динамика месяца',icon:'📈'},
   {id:'pieChart',name:'Расходы по категориям',icon:'🥧'},
   {id:'insights',name:'Инсайты',icon:'💡'},
@@ -2067,6 +2086,17 @@ function dashWidgetHTML(id,ctx){
   if(id==='recent')return`<div class="card"><div class="ctitle">Последние операции</div>${recent.length?recent.map(t=>txRow(t,false)).join(''):`<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">Нет операций</div></div>`}</div>`;
   if(id==='portfolioSummary')return dashPortfolioWidget();
   if(id==='marketTicker')return dashMarketTickerWidget();
+  if(id==='accounts'){
+    const accs=store.accounts.filter(a=>!a.archived);
+    if(!accs.length)return'';
+    const nw=netWorth();
+    return`<div class="card" style="cursor:pointer" onclick="goPage('accounts')">
+      <div class="ctitle">Счета</div>
+      <div style="font-size:1.25rem;font-weight:900;color:${nw.total>=0?'var(--t1)':'var(--red)'}">${fmt(nw.total)}</div>
+      <div style="font-size:.64rem;color:var(--t3);margin-bottom:8px">чистый капитал${nw.portSum?' (со счётом портфеля)':''}</div>
+      ${accs.slice(0,4).map(a=>{const k=accKind(a.kind);const b=accountBalance(a);return`<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:3px 0"><span style="color:var(--t2)">${a.icon||k.e} ${a.name}</span><span style="color:${b>=0?'var(--green)':'var(--red)'};font-variant-numeric:tabular-nums">${fmt(b)}</span></div>`}).join('')}
+    </div>`;
+  }
   return'';
 }
 function renderDash(tx,inc,exp,bal){
@@ -2345,13 +2375,15 @@ function openRecurringModal(id){
       </div>
       <div id="rc-day-fields"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px">
       <div><label class="flbl">Начиная с</label><input class="finput" type="date" id="rc-start" value="${r?r.startDate:new Date().toISOString().slice(0,10)}"/></div>
       <div><label class="flbl">До (необязательно)</label><input class="finput" type="date" id="rc-end" value="${r&&r.endDate?r.endDate:''}"/></div>
     </div>
+    <div style="margin-bottom:13px"><label class="flbl">Счёт</label><select class="finput" id="rc-account"></select></div>
     <div class="ferr" id="rc-err" style="margin-bottom:8px"><span>⚠</span><span></span></div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="submitRecurring()">${r?'Сохранить':'Создать правило'}</button>`;
   rcFillCategories(type,r&&r.category);
+  fillAccountSelect(document.getElementById('rc-account'), (r&&r.accountId)||defaultAccountId());
   rcRenderDayFields(r);
   document.getElementById('recurring-modal').style.display='grid';
 }
@@ -2396,6 +2428,8 @@ async function submitRecurring(){
   };
   const end=document.getElementById('rc-end').value;
   if(end)body.endDate=end;
+  const rcAcc=document.getElementById('rc-account')?.value;
+  if(rcAcc)body.accountId=rcAcc;
   if(cadence==='weekly'){body.dayOfWeek=parseInt(document.getElementById('rc-dow').value,10)}
   else{
     body.dayOfMonth=parseInt(document.getElementById('rc-dom').value,10);
@@ -2501,6 +2535,105 @@ async function redeemPromo(){
     err.querySelector('span:last-child').textContent=e.message||'Не удалось активировать промокод';
     err.classList.add('show');
   }
+}
+
+/* ═══════════════════════════════════════════
+   СЧЕТА И КАРТЫ
+═══════════════════════════════════════════ */
+const ACC_KINDS=[
+  {id:'card',l:'Карта',e:'💳'},{id:'cash',l:'Наличные',e:'💵'},{id:'bank',l:'Банковский счёт',e:'🏦'},
+  {id:'savings',l:'Накопительный',e:'🐷'},{id:'crypto',l:'Крипто-кошелёк',e:'🪙'},{id:'other',l:'Другое',e:'📦'},
+];
+function accKind(id){return ACC_KINDS.find(k=>k.id===id)||ACC_KINDS[5]}
+function accountBalance(acc){
+  return acc.startBalance + store.tx.reduce((s,t)=> t.accountId===acc.id ? s+(t.type==='income'?t.amount:-t.amount) : s, 0);
+}
+function netWorth(){
+  const accSum=store.accounts.filter(a=>!a.archived).reduce((s,a)=>s+accountBalance(a),0);
+  let portSum=0;
+  if(isPro()&&store.portfolio.length){ try{ portSum=store.portfolio.reduce((s,h)=>s+calcHolding(h).value,0); }catch{} }
+  return {accSum,portSum,total:accSum+portSum};
+}
+function defaultAccountId(){ const a=store.accounts.filter(x=>!x.archived)[0]; return a?a.id:'' }
+
+function renderAccounts(){
+  const accs=store.accounts.filter(a=>!a.archived);
+  const limit=currentUser.accountLimit; // null = без лимита
+  const canAdd = limit==null || accs.length<limit;
+  const nw=netWorth();
+  return `
+  <div class="profile-wrap" style="max-width:640px">
+    <div class="card" style="margin-bottom:14px;text-align:center;padding:20px">
+      <div style="font-size:.6rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Чистый капитал</div>
+      <div style="font-size:1.5rem;font-weight:900;color:${nw.total>=0?'var(--t1)':'var(--red)'};margin-top:3px">${fmt(nw.total)}</div>
+      <div style="font-size:.66rem;color:var(--t3);margin-top:4px">Счета ${fmt(nw.accSum)}${nw.portSum?` · Портфель ${fmt(nw.portSum)}`:''}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
+      <div class="ps-title" style="margin:0;padding:0;border:none">Счета и карты</div>
+      ${canAdd?`<button class="btn btn-primary" onclick="openAccountModal()">+ Добавить счёт</button>`
+              :`<button class="btn btn-ghost" onclick="goPage('billing')">🔒 Лимит ${limit} · открыть тариф</button>`}
+    </div>
+    ${accs.map(a=>{
+      const k=accKind(a.kind); const bal=accountBalance(a);
+      return `<div class="card card-sm" style="display:flex;align-items:center;gap:12px;margin-bottom:9px">
+        <div class="tx-cat" style="background:${(a.color||'#888')}2e;font-size:18px">${a.icon||k.e}</div>
+        <div style="flex:1;min-width:0"><div class="tx-name">${a.name}</div><div class="tx-meta">${k.l}</div></div>
+        <span class="tx-amt ${bal>=0?'inc':'exp'}">${fmt(bal)}</span>
+        <button class="tx-del" title="Изменить" onclick="openAccountModal('${a.id}')">✎</button>
+        ${accs.length>1?`<button class="tx-del" title="Удалить" onclick="deleteAccount('${a.id}')">✕</button>`:''}
+      </div>`;
+    }).join('')}
+    <p style="font-size:.66rem;color:var(--t3);margin-top:10px;line-height:1.5">Баланс = начальный остаток + доходы − расходы по счёту. Все суммы в основной валюте профиля.</p>
+  </div>`;
+}
+
+let editingAccountId=null;
+function openAccountModal(id){
+  editingAccountId=id||null;
+  const a=id?store.accounts.find(x=>x.id===id):null;
+  document.getElementById('account-modal-body').innerHTML=`
+    <div style="margin-bottom:11px"><label class="flbl">Название</label><input class="finput" id="ac-name" maxlength="60" value="${a?(a.name||'').replace(/"/g,'&quot;'):''}" placeholder="Напр. «Тинькофф Black»"/></div>
+    <div style="margin-bottom:11px"><label class="flbl">Тип</label>
+      <select class="finput" id="ac-kind">${ACC_KINDS.map(k=>`<option value="${k.id}" ${a&&a.kind===k.id?'selected':''}>${k.e} ${k.l}</option>`).join('')}</select>
+    </div>
+    <div style="margin-bottom:13px"><label class="flbl">Текущий остаток (${currInfo().sym})</label>
+      <input class="finput" type="number" step="any" id="ac-start" value="${a?a.startBalance:''}" placeholder="0"/>
+      <div style="font-size:.62rem;color:var(--t3);margin-top:3px">Сколько сейчас на счёте. Дальше баланс будут менять транзакции.</div>
+    </div>
+    <div class="ferr" id="ac-err" style="margin-bottom:8px"><span>⚠</span><span></span></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="submitAccount()">${a?'Сохранить':'Создать счёт'}</button>`;
+  document.getElementById('account-modal').style.display='grid';
+}
+function closeAccountModal(){const m=document.getElementById('account-modal');if(m)m.style.display='none'}
+async function submitAccount(){
+  const err=document.getElementById('ac-err'); err.classList.remove('show');
+  const fail=m=>{err.querySelector('span:last-child').textContent=m;err.classList.add('show')};
+  const name=document.getElementById('ac-name').value.trim();
+  if(!name)return fail('Введи название');
+  const body={
+    name, kind:document.getElementById('ac-kind').value, currency:baseCurrency,
+    startBalance:parseFloat((document.getElementById('ac-start').value||'0').replace(',','.'))||0,
+  };
+  try{
+    if(editingAccountId)await api('/api/accounts/'+editingAccountId,{method:'PATCH',body});
+    else await api('/api/accounts',{method:'POST',body});
+    closeAccountModal();
+    await reloadAccounts();
+    render();
+    showToast(editingAccountId?'✅ Счёт обновлён':'✅ Счёт создан');
+  }catch(e){
+    if(e.status===402){ closeAccountModal(); showToast(e.message||'Лимит счетов',true); goPage('billing'); return; }
+    fail(e.message||'Не удалось сохранить');
+  }
+}
+async function deleteAccount(id){
+  if(!confirm('Удалить счёт? Его транзакции переедут на другой счёт.'))return;
+  try{
+    await api('/api/accounts/'+id,{method:'DELETE'});
+    await Promise.all([reloadAccounts(),reloadTransactions()]);
+    render();
+    showToast('🗑 Счёт удалён');
+  }catch(e){ showToast('❌ '+(e.message||e),true) }
 }
 
 /* ═══════════════════════════════════════════
@@ -3380,11 +3513,17 @@ function exportTxt(){
 /* ═══════════════════════════════════════════
    ADD / BUDGET MODALS
 ═══════════════════════════════════════════ */
+function fillAccountSelect(sel,selectedId){
+  if(!sel)return;
+  const accs=store.accounts.filter(a=>!a.archived);
+  sel.innerHTML=accs.map(a=>`<option value="${a.id}" ${a.id===selectedId?'selected':''}>${a.icon||accKind(a.kind).e} ${a.name}</option>`).join('');
+}
 function openAddModal(){
   setType('expense');
   document.getElementById('f-amount').value='';
   document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
   document.getElementById('f-note').value='';
+  fillAccountSelect(document.getElementById('f-account'), defaultAccountId());
   const curEl=document.getElementById('f-amount-cur');if(curEl)curEl.textContent=currInfo().sym;
   document.getElementById('add-modal').style.display='grid';
   setTimeout(()=>document.getElementById('f-amount').focus(),50);
@@ -3403,7 +3542,8 @@ function buildCatGrid(t){
 function selCat(id){addCat=id;buildCatGrid(addType)}
 async function submitTx(){
   const amt=parseFloat(document.getElementById('f-amount').value.replace(',','.'));if(!amt||amt<=0)return;
-  const payload={type:addType,amount:amt,category:addCat,note:document.getElementById('f-note').value.trim()||undefined,date:document.getElementById('f-date').value};
+  const acctId=document.getElementById('f-account')?.value||undefined;
+  const payload={type:addType,amount:amt,category:addCat,note:document.getElementById('f-note').value.trim()||undefined,date:document.getElementById('f-date').value,accountId:acctId};
   closeAddModal();
   try{
     const r=await api('/api/transactions',{method:'POST',body:payload});
@@ -3749,7 +3889,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

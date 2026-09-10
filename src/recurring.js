@@ -81,11 +81,17 @@ async function runRecurringForUser(userId) {
   );
   if (!rules.length) return 0;
 
+  // дефолтный счёт пользователя — на него уходят транзакции правил без своего счёта
+  const defAcct = (await pool.query(
+    'SELECT id FROM accounts WHERE user_id=$1 ORDER BY sort, created_at LIMIT 1', [userId]
+  )).rows[0]?.id || null;
+
   const client = await pool.connect();
   let created = 0;
   try {
     await client.query('BEGIN');
     for (const rule of rules) {
+      const acctId = rule.account_id || defAcct;
       const from = rule.last_run
         ? iso(new Date(parse(rule.last_run).getTime() + DAY))
         : maxIso(rule.start_date, today);
@@ -95,12 +101,12 @@ async function runRecurringForUser(userId) {
         // NOT EXISTS — идемпотентность: даже если last_run по какой-то причине
         // откатился, повторное вхождение (rule.id + дата) не задублируется.
         const r = await client.query(
-          `INSERT INTO transactions (user_id, type, amount, category, note, date, recurring_id)
-           SELECT $1,$2,$3,$4,$5,$6,$7
+          `INSERT INTO transactions (user_id, type, amount, category, note, date, recurring_id, account_id)
+           SELECT $1,$2,$3,$4,$5,$6,$7,$8
            WHERE NOT EXISTS (
              SELECT 1 FROM transactions WHERE recurring_id=$7 AND date=$6
            )`,
-          [userId, rule.type, rule.amount, rule.category, rule.note || null, d, rule.id]
+          [userId, rule.type, rule.amount, rule.category, rule.note || null, d, rule.id, acctId]
         );
         created += r.rowCount;
       }
