@@ -2,12 +2,12 @@ const express = require('express');
 const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
-const requirePro = require('../middleware/requirePro');
+const requireTier = require('../middleware/requireTier');
 const { nextDate } = require('../recurring');
 
 const router = express.Router();
 router.use(requireAuth);
-router.use(requirePro); // регулярные транзакции — фича тарифа Pro
+router.use(requireTier('pro')); // регулярные транзакции — от тарифа Pro
 
 function toPublicRule(row) {
   return {

@@ -27,7 +27,7 @@ const cookieOpts = () => ({
 const { planInfo } = require('../plan');
 
 function toPublicUser(row) {
-  const plan = planInfo(row);
+  const p = planInfo(row);
   return {
     id: row.id,
     email: row.email,
@@ -41,9 +41,11 @@ function toPublicUser(row) {
     dashboardWidgets: row.dashboard_widgets,
     twofa: row.totp_enabled,
     createdAt: row.created_at,
-    plan: plan.plan,
-    proUntil: plan.proUntil,
-    promoDiscount: plan.promoDiscount,
+    tier: p.tier,
+    tierUntil: p.tierUntil,
+    lifetime: p.lifetime,
+    promoDiscount: p.promoDiscount,
+    accountLimit: p.accountLimit,
   };
 }
 

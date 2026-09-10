@@ -168,6 +168,14 @@ body.is-offline .net-pill { display: inline-flex; }
 .plan-badge { font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; letter-spacing: .04em; text-transform: uppercase; }
 .plan-badge.plan-pro { background: linear-gradient(135deg, hsl(var(--acc-h),80%,62%), hsl(calc(var(--acc-h) + 25),80%,66%)); color: #fff; }
 .plan-badge.plan-free { background: var(--s3, #2a2f3d); color: var(--t3); }
+.tier-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (max-width: 640px) { .tier-grid { grid-template-columns: 1fr; } }
+.tier-card { background: var(--s1); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; }
+.tier-card.tier-current { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
+.tier-card-hd { display: flex; align-items: center; gap: 7px; font-weight: 800; color: var(--t1); margin-bottom: 8px; }
+.tier-card-name { font-size: .95rem; }
+.tier-card-body div { font-size: .72rem; color: var(--t2); padding: 3px 0; display: flex; gap: 6px; line-height: 1.4; }
+.tier-card-body div span { color: var(--t3); }
 html, body { height: 100%; }
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1527,33 +1535,40 @@ function mapUser(u){
     dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
     twofa:!!u.twofa,
     joinedAt:u.createdAt||new Date().toISOString(),
-    plan:u.plan||'free',
-    proUntil:u.proUntil||null,
+    tier:u.tier||'free',
+    tierUntil:u.tierUntil||null,
+    lifetime:!!u.lifetime,
     promoDiscount:u.promoDiscount||null,
+    accountLimit:(u.accountLimit==null?null:u.accountLimit),
   };
 }
-function isPro(){return !!currentUser && currentUser.plan==='pro'}
+const TIER_RANK={free:0,pro:1,premium:2,business:3};
+const TIER_LABEL={free:'Free',pro:'Pro',premium:'Premium',business:'Business'};
+function hasTier(min){return !!currentUser && (TIER_RANK[currentUser.tier]||0) >= (TIER_RANK[min]||99)}
+function isPro(){return hasTier('pro')}
 const PRO_PAGES=['portfolio','markets','crypto','recurring'];
 /* API-холдинг портфеля → фронтенд ждёт поле `e` вместо `icon` */
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[]};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],billing:null};
 
 async function loadAllData(){
   // /api/transactions первым и отдельно: он же догоняет регулярные правила,
   // поэтому /api/recurring запрашиваем после него, чтобы nextDate был свежим.
   const txR=await api('/api/transactions');
   const gate=(fallback)=>(e)=>{ if(e&&e.status===402)return fallback; throw e; }; // фича за пейволом → пусто
-  const [budR,portR,recR]=await Promise.all([
+  const [budR,portR,recR,billR]=await Promise.all([
     api('/api/budgets'),
     api('/api/portfolio').catch(gate({holdings:[]})),
     api('/api/recurring').catch(gate({rules:[]})),
+    api('/api/billing').catch(()=>null),
   ]);
   store.tx=txR.transactions||[];
   store.budgets=budR.budgets||{};
   store.portfolio=(portR.holdings||[]).map(mapHolding);
   store.recurring=recR.rules||[];
+  store.billing=billR;
 }
 async function reloadPortfolio(){
   const r=await api('/api/portfolio');
@@ -1820,7 +1835,7 @@ async function enterApp(){
   }catch(e){
     showToast('⚠ Не удалось загрузить данные: '+(e.message||e),true);
   }
-  updateProUI();
+  updateTierUI();
   goPage('dashboard');
   if(typeof refreshInstallUI==='function')refreshInstallUI();
 }
@@ -1890,15 +1905,19 @@ function goPage(p){
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
 }
-/* Замок на пунктах меню для free-тарифа + бейдж в меню аккаунта. */
-function updateProUI(){
+/* Замок на пунктах меню ниже нужного тарифа + бейдж в меню аккаунта. */
+function updateTierUI(){
   const pro=isPro();
   PRO_PAGES.forEach(pg=>{
     const btn=document.querySelector(`.nav-btn[data-page="${pg}"]`);
     if(btn)btn.classList.toggle('nav-locked',!pro);
   });
   const badge=document.getElementById('dd-plan-badge');
-  if(badge){badge.textContent=pro?'Pro':'Free';badge.className='plan-badge '+(pro?'plan-pro':'plan-free')}
+  if(badge){
+    const t=currentUser?currentUser.tier:'free';
+    badge.textContent=TIER_LABEL[t]||'Free';
+    badge.className='plan-badge '+(t==='free'?'plan-free':'plan-pro');
+  }
 }
 function changeMonth(d){viewMonth+=d;if(viewMonth<0){viewMonth=11;viewYear--}if(viewMonth>11){viewMonth=0;viewYear++}updateMonthLabel();render()}
 function updateMonthLabel(){document.getElementById('month-lbl').textContent=MONTHS_S[viewMonth]+' '+viewYear;document.getElementById('topbar-month').textContent=MONTHS[viewMonth]+' '+viewYear}
@@ -2413,34 +2432,42 @@ async function deleteRecurring(id){
 /* ═══════════════════════════════════════════
    ТАРИФ (подписка + промокоды)
 ═══════════════════════════════════════════ */
-const PRO_FEATURES=[
-  '💼 Портфель, рынки, криптовалюты',
-  '↻ Регулярные транзакции',
-  '📤 Экспорт CSV / JSON / отчёт',
-  '∞ Без лимита транзакций (на free — 50 в месяц)',
+const TIER_ICON={free:'🆓',pro:'⭐',premium:'💎',business:'🏢'};
+const TIER_CATALOG_FALLBACK=[
+  {id:'free',label:'Free',features:['Транзакции, бюджеты, аналитика','До 50 транзакций в месяц','1 счёт']},
+  {id:'pro',label:'Pro',features:['Всё из Free без лимитов','Портфель, рынки, криптовалюты','Регулярные транзакции','Экспорт','Мультивалюта','До 5 счетов']},
+  {id:'premium',label:'Premium',features:['Всё из Pro','Импорт выписок банка','Цели накоплений','Уведомления: бюджет и цена','История капитала','Счета без ограничений']},
+  {id:'business',label:'Business',features:['Всё из Premium','Семейный / общий доступ (скоро)','Приоритетная поддержка']},
 ];
 function renderBilling(){
-  const pro=isPro();
-  const until=currentUser.proUntil?new Date(currentUser.proUntil):null;
-  const lifetime=until&&until.getFullYear()>=2099;
+  const cur=currentUser.tier||'free';
+  const catalog=(store.billing&&store.billing.catalog)||TIER_CATALOG_FALLBACK;
+  const until=currentUser.tierUntil?new Date(currentUser.tierUntil):null;
+  const lifetime=currentUser.lifetime;
+  const statusLine = cur==='free'
+    ? 'Портфель, рынки, регулярные платежи и экспорт — по подписке'
+    : (lifetime?'Активен навсегда':(until?'Активен до '+until.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}):'Активен'));
   return `
-  <div class="profile-wrap" style="max-width:560px">
+  <div class="profile-wrap" style="max-width:640px">
     <div class="card" style="margin-bottom:14px;text-align:center;padding:22px">
-      <div style="font-size:2rem;margin-bottom:4px">${pro?'⭐':'🆓'}</div>
-      <div style="font-size:1.1rem;font-weight:800;color:var(--t1)">${pro?'FinFlow Pro':'Бесплатный тариф'}</div>
-      <div style="font-size:.75rem;color:var(--t3);margin-top:4px">
-        ${pro?(lifetime?'Активен навсегда':'Активен до '+until.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}))
-             :'Портфель, рынки, регулярные платежи и экспорт — по подписке'}
-      </div>
+      <div style="font-size:2rem;margin-bottom:4px">${TIER_ICON[cur]||'🆓'}</div>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--t1)">FinFlow ${TIER_LABEL[cur]||'Free'}</div>
+      <div style="font-size:.75rem;color:var(--t3);margin-top:4px">${statusLine}</div>
       ${currentUser.promoDiscount?`<div style="font-size:.7rem;color:var(--green);margin-top:6px">Скидка ${currentUser.promoDiscount}% на будущую оплату сохранена</div>`:''}
     </div>
 
-    <div class="card" style="margin-bottom:14px">
-      <div class="ps-title">Что даёт Pro</div>
-      ${PRO_FEATURES.map(x=>`<div style="font-size:.8rem;color:var(--t2);padding:5px 0;display:flex;gap:8px"><span>${pro?'✅':'•'}</span><span>${x}</span></div>`).join('')}
+    <div class="tier-grid">
+      ${catalog.map(t=>{
+        const isCur=t.id===cur;
+        const rank=TIER_RANK[t.id]||0, curRank=TIER_RANK[cur]||0;
+        return `<div class="tier-card${isCur?' tier-current':''}">
+          <div class="tier-card-hd"><span>${TIER_ICON[t.id]||''}</span><span class="tier-card-name">${t.label}</span>${isCur?'<span class="plan-badge plan-pro" style="margin-left:auto">Текущий</span>':(rank<curRank?'<span class="plan-badge plan-free" style="margin-left:auto">Входит</span>':'')}</div>
+          <div class="tier-card-body">${t.features.map(f=>`<div><span>${rank<=curRank?'✅':'•'}</span> ${f}</div>`).join('')}</div>
+        </div>`;
+      }).join('')}
     </div>
 
-    <div class="card" style="margin-bottom:14px">
+    <div class="card" style="margin:14px 0">
       <div class="ps-title">Промокод</div>
       <div style="display:flex;gap:8px;align-items:flex-start">
         <input class="finput" id="promo-code" placeholder="Введи код" style="flex:1;text-transform:uppercase" onkeydown="if(event.key==='Enter')redeemPromo()"/>
@@ -2451,8 +2478,8 @@ function renderBilling(){
 
     <div class="card" style="margin-bottom:14px;opacity:.65">
       <div class="ps-title">Оплата картой</div>
-      <p style="font-size:.72rem;color:var(--t3);line-height:1.5;margin-bottom:10px">Скоро. Пока Pro можно получить по промокоду.</p>
-      <button class="btn btn-ghost" disabled style="cursor:not-allowed">Оформить Pro — скоро</button>
+      <p style="font-size:.72rem;color:var(--t3);line-height:1.5;margin-bottom:10px">Скоро. Пока тариф можно получить по промокоду.</p>
+      <button class="btn btn-ghost" disabled style="cursor:not-allowed">Оформить подписку — скоро</button>
     </div>
   </div>`;
 }
@@ -2464,10 +2491,11 @@ async function redeemPromo(){
   if(!code){err.querySelector('span:last-child').textContent='Введи промокод';err.classList.add('show');return}
   try{
     const r=await api('/api/billing/redeem',{method:'POST',body:{code}});
-    currentUser.plan=r.plan;currentUser.proUntil=r.proUntil;currentUser.promoDiscount=r.promoDiscount;
+    currentUser.tier=r.tier;currentUser.tierUntil=r.tierUntil;currentUser.lifetime=r.lifetime;currentUser.promoDiscount=r.promoDiscount;
+    if(r.accountLimit!==undefined)currentUser.accountLimit=r.accountLimit;
     showToast('✅ '+(r.message||'Промокод активирован'));
     try{ await loadAllData(); }catch{}
-    updateProUI();
+    updateTierUI();
     render();
   }catch(e){
     err.querySelector('span:last-child').textContent=e.message||'Не удалось активировать промокод';

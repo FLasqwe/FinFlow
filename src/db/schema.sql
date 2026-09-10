@@ -99,15 +99,22 @@ CREATE INDEX IF NOT EXISTS idx_recurring_user ON recurring_rules(user_id);
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS recurring_id UUID
   REFERENCES recurring_rules(id) ON DELETE SET NULL;
 
--- ── Подписка (тариф Pro) ─────────────────────────────────────
--- Pro активен, пока pro_until в будущем. «Навсегда» = дата далеко вперёд (2099).
-ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_until      TIMESTAMPTZ;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_source     TEXT;    -- 'promo' | 'manual' | платёжный провайдер
-ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_discount INTEGER; -- % скидки на будущую оплату (из percent-кода)
+-- ── Подписка (тарифы free / pro / premium / business) ───────
+-- Тариф активен, пока tier_until в будущем. «Навсегда» = дата далеко вперёд (2099).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_until      TIMESTAMPTZ;  -- legacy, не используется
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pro_source     TEXT;         -- legacy
+ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_discount INTEGER;      -- % скидки на будущую оплату (percent-код)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tier           TEXT NOT NULL DEFAULT 'free';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_until     TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tier_source    TEXT;         -- 'promo' | 'manual' | платёжный провайдер
+-- перенос со старой бинарной модели pro_until → tier
+UPDATE users SET tier='pro', tier_until=pro_until, tier_source=COALESCE(pro_source,'manual')
+  WHERE tier='free' AND pro_until IS NOT NULL AND pro_until > now();
 
 CREATE TABLE IF NOT EXISTS promo_codes (
   code        TEXT PRIMARY KEY,                       -- хранится в верхнем регистре
   kind        TEXT NOT NULL CHECK (kind IN ('free_days','free_forever','percent')),
+  grants_tier TEXT NOT NULL DEFAULT 'pro' CHECK (grants_tier IN ('pro','premium','business')),
   value       INTEGER,                                -- free_days: дней; percent: %; free_forever: NULL
   max_uses    INTEGER,                                -- NULL — без лимита
   used_count  INTEGER NOT NULL DEFAULT 0,
@@ -116,6 +123,7 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   note        TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS grants_tier TEXT NOT NULL DEFAULT 'pro';
 
 CREATE TABLE IF NOT EXISTS promo_redemptions (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

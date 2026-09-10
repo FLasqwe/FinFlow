@@ -6,7 +6,7 @@
 // около полуночи некритична для регулярных платежей.
 
 const pool = require('./db/pool');
-const { isPro } = require('./plan');
+const { tierAtLeast } = require('./plan');
 
 const DAY = 86400000;
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -71,9 +71,9 @@ function nextDate(rule, fromISO = todayISO()) {
 async function runRecurringForUser(userId) {
   const today = todayISO();
 
-  // Регулярные правила работают только на активном Pro. Тариф кончился — правила на паузе.
-  const { rows: u } = await pool.query('SELECT pro_until FROM users WHERE id=$1', [userId]);
-  if (!u[0] || !isPro(u[0])) return 0;
+  // Регулярные правила работают только от Pro. Тариф кончился — правила на паузе.
+  const { rows: u } = await pool.query('SELECT tier, tier_until FROM users WHERE id=$1', [userId]);
+  if (!u[0] || !tierAtLeast(u[0], 'pro')) return 0;
 
   const { rows: rules } = await pool.query(
     'SELECT * FROM recurring_rules WHERE user_id=$1 AND active=true',

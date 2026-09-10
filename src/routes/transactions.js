@@ -3,7 +3,7 @@ const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
 const { runRecurringForUser } = require('../recurring');
-const { isPro, FREE_TX_PER_MONTH } = require('../plan');
+const { tierAtLeast, FREE_TX_PER_MONTH } = require('../plan');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -65,8 +65,8 @@ router.post('/', async (req, res) => {
 
   // Лимит free-тарифа: не больше FREE_TX_PER_MONTH ручных транзакций за календарный месяц.
   // Авто-транзакции из регулярных правил идут мимо этого маршрута и не считаются.
-  const { rows: u } = await pool.query('SELECT pro_until FROM users WHERE id=$1', [req.userId]);
-  if (!isPro(u[0] || {})) {
+  const { rows: u } = await pool.query('SELECT tier, tier_until FROM users WHERE id=$1', [req.userId]);
+  if (!tierAtLeast(u[0] || {}, 'pro')) {
     const { rows: cnt } = await pool.query(
       `SELECT count(*)::int AS n FROM transactions
        WHERE user_id=$1 AND date >= date_trunc('month', CURRENT_DATE)`,
