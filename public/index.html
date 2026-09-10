@@ -1470,6 +1470,7 @@ canvas { display: block; max-width: 100%; }
             <div class="dd-body">
               <button class="dd-item" onclick="goPage('profile');closeDD()"><span class="dd-item-ico">👤</span>Профиль</button>
               <button class="dd-item" onclick="goPage('billing');closeDD()"><span class="dd-item-ico">⭐</span>Тариф<span id="dd-plan-badge" class="plan-badge plan-free" style="margin-left:auto">Free</span></button>
+              <button class="dd-item" onclick="goSupport()"><span class="dd-item-ico">💬</span>Поддержка</button>
               <button class="dd-item" id="dd-admin" onclick="goAdmin()" style="display:none"><span class="dd-item-ico">🛡</span>Админка</button>
               <button class="dd-item" onclick="goPage('markets');closeDD()"><span class="dd-item-ico">📈</span>Рынки</button>
               <button class="dd-item" onclick="goPage('crypto');closeDD()"><span class="dd-item-ico">₿</span>Крипто</button>
@@ -1513,6 +1514,7 @@ canvas { display: block; max-width: 100%; }
     <div class="sheet-sep"></div>
     <button class="sheet-item" data-page="billing" onclick="moreGo('billing')"><span class="si-ico">⭐</span>Тариф</button>
     <button class="sheet-item" data-page="profile" onclick="moreGo('profile')"><span class="si-ico">👤</span>Профиль</button>
+    <button class="sheet-item" onclick="goSupport()"><span class="si-ico">💬</span>Поддержка</button>
     <button class="sheet-item" id="sheet-admin" onclick="goAdmin()" style="display:none"><span class="si-ico">🛡</span>Админка</button>
     <button class="sheet-item" onclick="toggleTheme();closeMoreSheet()"><span class="si-ico" id="sheet-theme-ico">🌙</span><span id="sheet-theme-txt">Светлая тема</span></button>
     <button class="sheet-item" id="sheet-install" onclick="installApp();closeMoreSheet()" style="display:none"><span class="si-ico">📲</span>Установить приложение</button>
@@ -1630,6 +1632,14 @@ canvas { display: block; max-width: 100%; }
   <div class="modal" style="max-width:360px">
     <div class="modal-hd"><span class="modal-title">Пополнить цель</span><button class="modal-close" onclick="closeContribModal()">✕</button></div>
     <div id="contrib-modal-body"></div>
+  </div>
+</div>
+
+<!-- ADMIN SUPPORT THREAD MODAL -->
+<div class="overlay" id="support-thread-modal" style="display:none" onclick="if(event.target===this)closeSupportThread()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hd"><span class="modal-title">Обращение</span><button class="modal-close" onclick="closeSupportThread()">✕</button></div>
+    <div id="support-thread-body"></div>
   </div>
 </div>
 
@@ -1758,7 +1768,7 @@ function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -2031,6 +2041,7 @@ async function doLogout(){
   try{await api('/api/auth/logout',{method:'POST',auth:false})}catch{}
   try{navigator.serviceWorker?.controller?.postMessage('CLEAR_API_CACHE')}catch{}
   setAccessToken(null);loginTempToken=null;
+  clearInterval(_supportPoll);store.support=null;
   currentUser=null;store.tx=[];store.budgets={};store.portfolio=[];
   applyAccent(252);closeDD();
   clearInterval(twofaTimerInterval);
@@ -2131,7 +2142,7 @@ function goPage(p){
     b.classList.toggle('on', b.dataset.page===p || (b.dataset.page==='__more' && !MOBILEBAR_PAGES.includes(p)));
   });
   document.querySelectorAll('.sheet-item[data-page]').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф',admin:'Админка'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф',admin:'Админка',support:'Поддержка'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
@@ -2176,6 +2187,7 @@ function render(){
   else if(curPage==='billing')el.innerHTML=renderBilling();
   else if(curPage==='accounts')el.innerHTML=renderAccounts();
   else if(curPage==='goals')el.innerHTML=renderGoals();
+  else if(curPage==='support')el.innerHTML=renderSupport();
   else if(curPage==='admin')el.innerHTML=renderAdmin();
   else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
   else if(curPage==='portfolio')renderPortfolio(el);
@@ -3025,6 +3037,73 @@ async function deleteGoal(id){
 }
 
 /* ═══════════════════════════════════════════
+   ПОДДЕРЖКА (чат с ботом + эскалация)
+═══════════════════════════════════════════ */
+let _supportPoll=null;
+async function goSupport(){
+  closeMoreSheet();closeDD();
+  goPage('support');
+  await refreshSupport();
+  clearInterval(_supportPoll);
+  _supportPoll=setInterval(()=>{ if(curPage==='support')refreshSupport(true); else clearInterval(_supportPoll); }, 8000);
+}
+async function refreshSupport(silent){
+  try{
+    const r=await api('/api/support');
+    const changed=!store.support || JSON.stringify(store.support.messages)!==JSON.stringify(r.messages);
+    store.support=r;
+    if(curPage==='support'&&(!silent||changed)){ render(); supportScrollBottom(); }
+  }catch(e){ if(!silent){store.support={error:e.message||String(e)};if(curPage==='support')render();} }
+}
+function supportScrollBottom(){ const el=document.getElementById('sup-scroll'); if(el)el.scrollTop=el.scrollHeight; }
+function renderSupport(){
+  const s=store.support;
+  if(!s)return `<div class="empty" style="padding:50px 0"><div class="empty-ico">💬</div><div class="empty-t">Загрузка…</div></div>`;
+  if(s.error)return `<div class="card"><div class="ferr show"><span>⚠</span><span>${s.error}</span></div></div>`;
+  const waiting=s.thread.status==='waiting_human'||s.thread.needsHuman;
+  const bubble=m=>{
+    const mine=m.sender==='user';
+    const who=m.sender==='admin'?'Поддержка':m.sender==='bot'?'Бот':'';
+    return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin:6px 0">
+      <div style="max-width:80%;background:${mine?'var(--acc)':'var(--s2)'};color:${mine?'#fff':'var(--t1)'};border:1px solid ${mine?'transparent':'var(--border)'};border-radius:14px;padding:8px 12px;font-size:.8rem;line-height:1.45;white-space:pre-wrap;word-break:break-word">
+        ${who?`<div style="font-size:.62rem;font-weight:700;color:${mine?'rgba(255,255,255,.7)':'var(--t3)'};margin-bottom:2px">${who}</div>`:''}${m.body.replace(/</g,'&lt;')}
+      </div></div>`;
+  };
+  return `
+  <div style="max-width:640px;display:flex;flex-direction:column;height:calc(100dvh - 210px);min-height:320px">
+    <div id="sup-scroll" style="flex:1;overflow-y:auto;padding:4px 2px">
+      ${s.messages.map(bubble).join('')}
+      ${waiting?`<div style="text-align:center;font-size:.68rem;color:var(--t3);margin:10px 0">⌛ Ждём ответа поддержки</div>`:''}
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:10px">
+      ${!waiting?`<button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:.74rem;margin-bottom:8px" onclick="callHuman()">🙋 Позвать человека</button>`:''}
+      <div style="display:flex;gap:8px">
+        <input class="finput" id="sup-input" placeholder="Ваше сообщение…" style="flex:1" onkeydown="if(event.key==='Enter')sendSupport()"/>
+        <button class="btn btn-primary" onclick="sendSupport()">→</button>
+      </div>
+    </div>
+  </div>`;
+}
+async function sendSupport(){
+  const inp=document.getElementById('sup-input');
+  const body=(inp.value||'').trim();
+  if(!body)return;
+  inp.value='';inp.disabled=true;
+  try{
+    const r=await api('/api/support/messages',{method:'POST',body:{body}});
+    store.support=r;render();supportScrollBottom();
+  }catch(e){ showToast('❌ '+(e.message||e),true); inp.value=body; }
+  finally{ const i=document.getElementById('sup-input'); if(i){i.disabled=false;i.focus()} }
+}
+async function callHuman(){
+  try{
+    const r=await api('/api/support/human',{method:'POST'});
+    store.support=r;render();supportScrollBottom();
+    showToast('🙋 Поддержка уведомлена');
+  }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ═══════════════════════════════════════════
    АДМИН-ПАНЕЛЬ (только для ADMIN_EMAILS)
 ═══════════════════════════════════════════ */
 const EVENT_LABEL={register:'Регистрация',login:'Вход',login_2fa:'Вход · 2FA','2fa_enable':'Включил 2FA',promo_redeem:'Промокод',account_create:'Создал счёт',tier_change:'Смена тарифа'};
@@ -3035,12 +3114,13 @@ let adminUserQuery='';
 async function goAdmin(){ closeMoreSheet(); closeDD(); goPage('admin'); await refreshAdmin(); }
 async function refreshAdmin(){
   try{
-    const [ov,us,ev]=await Promise.all([
+    const [ov,us,ev,sup]=await Promise.all([
       api('/api/admin/overview'),
       api('/api/admin/users'+(adminUserQuery?('?q='+encodeURIComponent(adminUserQuery)):'')),
       api('/api/admin/events?limit=40'),
+      api('/api/admin/support'),
     ]);
-    store.admin={overview:ov,users:us.users||[],events:ev.events||[]};
+    store.admin={overview:ov,users:us.users||[],events:ev.events||[],support:sup.threads||[]};
   }catch(e){ store.admin={error:e.message||String(e)}; }
   if(curPage==='admin')render();
 }
@@ -3074,6 +3154,15 @@ function renderAdmin(){
       <div style="display:flex;align-items:flex-end;gap:3px;height:60px">
         ${o.signups.map(s=>`<div title="${s.day}: ${s.n}" style="flex:1;background:var(--acc);border-radius:2px 2px 0 0;height:${Math.round(s.n/maxSignup*100)||2}%;min-height:2px;opacity:${s.n?1:.25}"></div>`).join('')}
       </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="ctitle">Обращения в поддержку${o.totals.support_waiting?` <span class="plan-badge plan-pro" style="margin-left:4px">${o.totals.support_waiting} ждут</span>`:''}</div>
+      ${a.support&&a.support.length?a.support.map(t=>`<div onclick="adminOpenThread('${t.id}')" style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer">
+        <span style="font-size:1rem">${t.needs_human?'🙋':t.status==='answered'?'✅':'💬'}</span>
+        <div style="flex:1;min-width:0"><div class="tx-name" style="font-size:.8rem">${t.email}</div><div class="tx-meta">${(t.last_sender==='admin'?'Вы: ':t.last_sender==='bot'?'Бот: ':'')}${(t.last_body||'').replace(/</g,'&lt;').slice(0,60)}</div></div>
+        <span style="font-size:.62rem;color:var(--t3);white-space:nowrap">${fmtDT(t.last_message_at)}</span>
+      </div>`).join(''):`<div style="font-size:.75rem;color:var(--t3)">Обращений нет</div>`}
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -3136,6 +3225,56 @@ async function adminSetTier(id,tier,days){
     showToast('✅ Тариф обновлён');
     closeAdminUser();
     await refreshAdmin();
+  }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+let adminThreadId=null;
+async function adminOpenThread(id){
+  adminThreadId=id;
+  const body=document.getElementById('support-thread-body');
+  body.innerHTML=`<div class="empty" style="padding:30px 0"><div class="empty-ico">⏳</div></div>`;
+  document.getElementById('support-thread-modal').style.display='grid';
+  await adminRenderThread();
+}
+async function adminRenderThread(){
+  const body=document.getElementById('support-thread-body');
+  try{
+    const d=await api('/api/admin/support/'+adminThreadId);
+    const bub=m=>{
+      const admin=m.sender==='admin';
+      const who=m.sender==='admin'?'Вы':m.sender==='bot'?'Бот':d.thread.email;
+      return `<div style="display:flex;justify-content:${admin?'flex-end':'flex-start'};margin:5px 0"><div style="max-width:82%;background:${admin?'var(--acc)':'var(--s2)'};color:${admin?'#fff':'var(--t1)'};border-radius:12px;padding:7px 11px;font-size:.76rem;line-height:1.4;white-space:pre-wrap;word-break:break-word"><div style="font-size:.6rem;font-weight:700;opacity:.7;margin-bottom:2px">${who}</div>${m.body.replace(/</g,'&lt;')}</div></div>`;
+    };
+    body.innerHTML=`
+      <div style="font-size:.72rem;color:var(--t2);margin-bottom:8px">${d.thread.email} · ${d.thread.status}${d.thread.needs_human?' · 🙋 ждёт человека':''}</div>
+      <div style="max-height:44vh;overflow-y:auto;padding-right:4px;margin-bottom:10px" id="adm-thread-scroll">${d.messages.map(bub).join('')}</div>
+      <div style="display:flex;gap:8px">
+        <input class="finput" id="adm-reply" placeholder="Ответить пользователю…" style="flex:1" onkeydown="if(event.key==='Enter')adminReplySupport()"/>
+        <button class="btn btn-primary" onclick="adminReplySupport()">→</button>
+      </div>
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:.7rem;margin-top:8px" onclick="adminCloseThread()">Закрыть обращение</button>`;
+    const sc=document.getElementById('adm-thread-scroll'); if(sc)sc.scrollTop=sc.scrollHeight;
+  }catch(e){ body.innerHTML=`<div class="ferr show"><span>⚠</span><span>${e.message||e}</span></div>`; }
+}
+function closeSupportThread(){const m=document.getElementById('support-thread-modal');if(m)m.style.display='none'}
+async function adminReplySupport(){
+  const inp=document.getElementById('adm-reply');
+  const body=(inp.value||'').trim();
+  if(!body)return;
+  inp.value='';
+  try{
+    await api('/api/admin/support/'+adminThreadId+'/reply',{method:'POST',body:{body}});
+    await adminRenderThread();
+    refreshAdmin();
+  }catch(e){ showToast('❌ '+(e.message||e),true); inp.value=body; }
+}
+async function adminCloseThread(){
+  if(!confirm('Закрыть обращение?'))return;
+  try{
+    await api('/api/admin/support/'+adminThreadId+'/close',{method:'POST'});
+    closeSupportThread();
+    refreshAdmin();
+    showToast('Обращение закрыто');
   }catch(e){ showToast('❌ '+(e.message||e),true) }
 }
 
@@ -4393,7 +4532,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

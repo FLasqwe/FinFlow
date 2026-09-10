@@ -33,7 +33,8 @@ router.get('/overview', async (req, res) => {
       SELECT
         (SELECT count(*)::int FROM transactions)    AS transactions,
         (SELECT count(*)::int FROM accounts)         AS accounts,
-        (SELECT count(*)::int FROM recurring_rules)  AS recurring`),
+        (SELECT count(*)::int FROM recurring_rules)  AS recurring,
+        (SELECT count(*)::int FROM support_threads WHERE needs_human=true AND status<>'closed') AS support_waiting`),
     pool.query('SELECT code, kind, grants_tier, used_count, max_uses, active FROM promo_codes ORDER BY used_count DESC LIMIT 20'),
   ]);
 
@@ -112,6 +113,50 @@ router.post('/users/:id/tier', async (req, res) => {
   if (!rows.length) return res.status(404).json({ error: 'Пользователь не найден' });
   logEvent(req.params.id, 'tier_change', { by: 'admin', tier, days: days || null });
   res.json({ ok: true, user: rows[0] });
+});
+
+// ── Поддержка ──────────────────────────────────────────────
+router.get('/support', async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT t.id, t.status, t.needs_human, t.last_message_at, t.created_at, u.email,
+           (SELECT count(*)::int FROM support_messages m WHERE m.thread_id=t.id) AS messages,
+           (SELECT body FROM support_messages m WHERE m.thread_id=t.id ORDER BY created_at DESC LIMIT 1) AS last_body,
+           (SELECT sender FROM support_messages m WHERE m.thread_id=t.id ORDER BY created_at DESC LIMIT 1) AS last_sender
+    FROM support_threads t JOIN users u ON u.id=t.user_id
+    WHERE t.status <> 'closed'
+    ORDER BY (t.needs_human) DESC, t.last_message_at DESC
+    LIMIT 100`);
+  res.json({ threads: rows });
+});
+
+router.get('/support/:id', async (req, res) => {
+  const t = (await pool.query(
+    `SELECT t.*, u.email FROM support_threads t JOIN users u ON u.id=t.user_id WHERE t.id=$1`,
+    [req.params.id]
+  )).rows[0];
+  if (!t) return res.status(404).json({ error: 'Тред не найден' });
+  const messages = (await pool.query(
+    'SELECT id, sender, body, created_at FROM support_messages WHERE thread_id=$1 ORDER BY created_at',
+    [req.params.id]
+  )).rows;
+  res.json({ thread: { id: t.id, email: t.email, status: t.status, needs_human: t.needs_human }, messages });
+});
+
+const replySchema = z.object({ body: z.string().min(1).max(4000) });
+router.post('/support/:id/reply', async (req, res) => {
+  const parsed = replySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Пустой или слишком длинный ответ' });
+  const own = await pool.query('SELECT id FROM support_threads WHERE id=$1', [req.params.id]);
+  if (!own.rowCount) return res.status(404).json({ error: 'Тред не найден' });
+  await pool.query("INSERT INTO support_messages (thread_id, sender, body) VALUES ($1,'admin',$2)", [req.params.id, parsed.data.body]);
+  await pool.query("UPDATE support_threads SET status='answered', needs_human=false, last_message_at=now() WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+
+router.post('/support/:id/close', async (req, res) => {
+  const { rowCount } = await pool.query("UPDATE support_threads SET status='closed' WHERE id=$1", [req.params.id]);
+  if (!rowCount) return res.status(404).json({ error: 'Тред не найден' });
+  res.json({ ok: true });
 });
 
 // ── GET /api/admin/events?limit= ──

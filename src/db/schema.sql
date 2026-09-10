@@ -188,6 +188,26 @@ CREATE TABLE IF NOT EXISTS email_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);
 
+-- ── Поддержка: чат с ботом + эскалация на человека ─────────
+CREATE TABLE IF NOT EXISTS support_threads (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status       TEXT NOT NULL DEFAULT 'bot' CHECK (status IN ('bot','waiting_human','answered','closed')),
+  needs_human  BOOLEAN NOT NULL DEFAULT false,
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_support_threads_user ON support_threads(user_id);
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id  UUID NOT NULL REFERENCES support_threads(id) ON DELETE CASCADE,
+  sender     TEXT NOT NULL CHECK (sender IN ('user','bot','admin')),
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_support_messages_thread ON support_messages(thread_id, created_at);
+
 -- ── Цели накоплений (тариф Premium) ─────────────────────────
 CREATE TABLE IF NOT EXISTS goals (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
