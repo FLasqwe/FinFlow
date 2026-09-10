@@ -4,8 +4,8 @@ const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
 const { effectiveTier, walletLimit } = require('../plan');
 const { logEvent } = require('../events');
-const { CHAINS, CHAIN_IDS, validateAddress, fetchNativeBalance } = require('../chains');
-const { priceOf } = require('../prices');
+const { CHAINS, CHAIN_IDS, validateAddress } = require('../chains');
+const { syncWalletRow } = require('../walletsync');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -28,27 +28,7 @@ function toPublic(row) {
   };
 }
 
-// Тянет баланс и курс, пишет результат в строку. Мягко: ошибку кладёт в sync_error.
-async function syncRow(row) {
-  try {
-    const native = await fetchNativeBalance(row.chain, row.address);
-    const price = await priceOf(row.chain).catch(() => null);
-    const usd = price != null ? native * price : null;
-    const { rows } = await pool.query(
-      `UPDATE wallets SET last_native=$1, last_price=$2, last_usd=$3, last_sync=now(), sync_error=NULL
-       WHERE id=$4 RETURNING *`,
-      [native, price, usd, row.id]
-    );
-    return rows[0];
-  } catch (e) {
-    const msg = (e && e.message) ? String(e.message).slice(0, 200) : 'Ошибка синхронизации';
-    const { rows } = await pool.query(
-      `UPDATE wallets SET last_sync=now(), sync_error=$1 WHERE id=$2 RETURNING *`,
-      [msg, row.id]
-    );
-    return rows[0];
-  }
-}
+const syncRow = syncWalletRow; // общий помощник (см. src/walletsync.js)
 
 function summarize(rows) {
   const wallets = rows.map(toPublic);

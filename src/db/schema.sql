@@ -305,3 +305,21 @@ CREATE TABLE IF NOT EXISTS networth_snapshots (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, day)
 );
+
+-- ── Уведомления пользователя (просадка капитала, новый максимум и т.п.) ──
+CREATE TABLE IF NOT EXISTS alerts (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  body       TEXT,
+  meta       JSONB,
+  read       BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id, created_at DESC);
+
+-- Порог оповещения о просадке чистого капитала, % (0 = выключено).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS nw_alert_pct NUMERIC(5,2) NOT NULL DEFAULT 10;
+-- Когда планировщик последний раз авто-обновлял кошельки этого пользователя.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wallets_synced_at TIMESTAMPTZ;

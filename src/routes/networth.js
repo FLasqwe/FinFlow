@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const pool = require('../db/pool');
 const requireAuth = require('../middleware/requireAuth');
+const { checkNetWorthAlerts } = require('../alerts');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -28,6 +29,24 @@ router.post('/snapshot', async (req, res) => {
      RETURNING day, total, currency, breakdown`,
     [req.userId, total, currency, breakdown ? JSON.stringify(breakdown) : null]
   );
+
+  // Оповещения о просадке / новом максимуме — по последним 30 дням (не блокируем ответ).
+  (async () => {
+    try {
+      const [hist, u] = await Promise.all([
+        pool.query(
+          `SELECT day, total, currency FROM networth_snapshots
+           WHERE user_id=$1 AND day >= CURRENT_DATE - 30 ORDER BY day ASC`,
+          [req.userId]
+        ),
+        pool.query('SELECT nw_alert_pct FROM users WHERE id=$1', [req.userId]),
+      ]);
+      await checkNetWorthAlerts(req.userId, hist.rows, u.rows[0] ? u.rows[0].nw_alert_pct : 10);
+    } catch (e) {
+      console.error('nw alert check failed:', e.message);
+    }
+  })();
+
   res.json({ snapshot: publicRow(rows[0]) });
 });
 

@@ -566,6 +566,35 @@ body {
   display: none;
 }
 .acct-dd.open { display: block; }
+.bell-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px;
+  padding: 0 3px; border-radius: 99px; background: var(--red, #ef4444); color: #fff;
+  font-size: 0.56rem; font-weight: 800; line-height: 15px; text-align: center;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.alert-dd {
+  position: absolute; top: calc(100% + 8px); right: 0; width: 320px; max-width: 86vw;
+  background: var(--s1); border: 1px solid var(--border); border-radius: var(--r4);
+  box-shadow: var(--shadow-lg); z-index: 300; overflow: hidden; display: none;
+  animation: ddIn 0.18s cubic-bezier(0.16,1,0.3,1);
+}
+.alert-dd.open { display: block; }
+.alert-dd-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  font-size: 0.78rem; font-weight: 800; color: var(--t1);
+}
+.alert-dd-body { max-height: 60vh; overflow-y: auto; }
+.alert-row { padding: 10px 12px; border-bottom: 1px solid var(--border); position: relative; }
+.alert-row.unread { background: var(--acc-soft, rgba(124,92,255,.06)); }
+.alert-row .a-title { font-size: 0.76rem; font-weight: 700; color: var(--t1); }
+.alert-row .a-body { font-size: 0.68rem; color: var(--t2); margin-top: 2px; line-height: 1.45; }
+.alert-row .a-time { font-size: 0.6rem; color: var(--t3); margin-top: 4px; }
+.alert-row .a-del {
+  position: absolute; top: 8px; right: 8px; background: none; border: none;
+  color: var(--t4); cursor: pointer; font-size: 0.72rem; padding: 2px 4px;
+}
+.alert-row .a-del:hover { color: var(--red); }
 @keyframes ddIn { from { opacity:0; transform:translateY(-8px) scale(0.97) } to { opacity:1; transform:none } }
 .dd-hdr {
   padding: 14px 16px;
@@ -1474,6 +1503,13 @@ canvas { display: block; max-width: 100%; }
         <span class="net-pill" id="net-pill">● Офлайн</span>
       </div>
       <div class="topbar-r">
+        <div style="position:relative">
+          <button class="theme-btn" id="bell-btn" onclick="toggleAlerts(event)" title="Уведомления">🔔<span id="bell-badge" class="bell-badge" hidden>0</span></button>
+          <div class="alert-dd" id="alert-dd">
+            <div class="alert-dd-hd"><span>Уведомления</span><button class="wl-act" onclick="markAllAlerts()">Прочитать все</button></div>
+            <div id="alert-dd-body" class="alert-dd-body"></div>
+          </div>
+        </div>
         <button class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Сменить тему">🌙</button>
         <button class="btn btn-ghost" id="budget-topbtn" onclick="openBudgetModal()" style="display:none">⚙ Бюджеты</button>
         <button class="btn btn-primary" onclick="openAddModal()">+ Добавить</button>
@@ -1800,6 +1836,7 @@ function mapUser(u){
     accentHue:(u.accentHue!=null?u.accentHue:252),
     dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
     watchlist:Array.isArray(u.watchlist)?u.watchlist:[],
+    nwAlertPct:(u.nwAlertPct!=null?Number(u.nwAlertPct):10),
     twofa:!!u.twofa,
     emailVerified:u.emailVerified!==false,
     joinedAt:u.createdAt||new Date().toISOString(),
@@ -1822,7 +1859,7 @@ function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null,wallets:null,assets:null,networth:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null,wallets:null,assets:null,networth:null,alerts:[],alertsUnread:0};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -1848,9 +1885,20 @@ async function loadAllData(){
   store.wallets=walR.wallets||[];
   store.assets=astR.assets||[];
   try{ store.networth=await api('/api/networth?days=365'); }catch{ store.networth={history:[]}; }
+  await reloadAlerts().catch(()=>{});
 }
 async function reloadNetworth(){
   try{ store.networth=await api('/api/networth?days=365'); }catch{}
+}
+async function reloadAlerts(){
+  const r=await api('/api/alerts');
+  store.alerts=r.alerts||[]; store.alertsUnread=r.unread||0;
+  updateBellBadge();
+}
+function updateBellBadge(){
+  const b=document.getElementById('bell-badge');if(!b)return;
+  if(store.alertsUnread>0){ b.textContent=store.alertsUnread>99?'99+':store.alertsUnread; b.hidden=false; }
+  else b.hidden=true;
 }
 /* Раз в день пишем снимок чистого капитала (upsert на сервере). Фронтенд —
    единственный, кто знает курсы и конвертацию, поэтому считает он. */
@@ -2195,6 +2243,53 @@ function updateAccountUI(){
 function toggleDD(){const dd=document.getElementById('acct-dd');const btn=document.getElementById('acct-btn');const o=dd.classList.contains('open');dd.classList.toggle('open',!o);btn.classList.toggle('open',!o)}
 function closeDD(){document.getElementById('acct-dd').classList.remove('open');document.getElementById('acct-btn').classList.remove('open')}
 document.addEventListener('click',e=>{if(!e.target.closest('#acct-btn')&&!e.target.closest('#acct-dd'))closeDD()});
+
+/* ── Уведомления ── */
+function closeAlerts(){const dd=document.getElementById('alert-dd');if(dd)dd.classList.remove('open')}
+function toggleAlerts(e){
+  if(e)e.stopPropagation();
+  const dd=document.getElementById('alert-dd');if(!dd)return;
+  const willOpen=!dd.classList.contains('open');
+  dd.classList.toggle('open',willOpen);
+  if(willOpen){ closeDD(); renderAlertsDD(); markAlertsSeen(); }
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#bell-btn')&&!e.target.closest('#alert-dd'))closeAlerts()});
+function alertAgo(ts){
+  const s=Math.floor((Date.now()-new Date(ts).getTime())/1000);
+  if(s<60)return 'только что';
+  if(s<3600)return Math.floor(s/60)+' мин назад';
+  if(s<86400)return Math.floor(s/3600)+' ч назад';
+  return Math.floor(s/86400)+' дн назад';
+}
+function renderAlertsDD(){
+  const body=document.getElementById('alert-dd-body');if(!body)return;
+  const list=store.alerts||[];
+  if(!list.length){ body.innerHTML='<div style="padding:22px 12px;text-align:center;font-size:.72rem;color:var(--t3)">Пока пусто. Здесь появятся оповещения о просадке капитала и новых максимумах.</div>'; return; }
+  body.innerHTML=list.map(a=>`
+    <div class="alert-row ${a.read?'':'unread'}">
+      <button class="a-del" title="Убрать" onclick="deleteAlert('${a.id}')">✕</button>
+      <div class="a-title">${(a.title||'').replace(/</g,'&lt;')}</div>
+      ${a.body?`<div class="a-body">${a.body.replace(/</g,'&lt;')}</div>`:''}
+      <div class="a-time">${alertAgo(a.createdAt)}</div>
+    </div>`).join('');
+}
+/* открыли колокол → считаем показанные прочитанными (на сервере) */
+async function markAlertsSeen(){
+  if(!store.alertsUnread)return;
+  try{ await api('/api/alerts/read-all',{method:'POST'}); }catch{}
+  (store.alerts||[]).forEach(a=>a.read=true);
+  store.alertsUnread=0; updateBellBadge();
+}
+async function markAllAlerts(){
+  try{ await api('/api/alerts/read-all',{method:'POST'}); }catch{}
+  (store.alerts||[]).forEach(a=>a.read=true);
+  store.alertsUnread=0; updateBellBadge(); renderAlertsDD();
+}
+async function deleteAlert(id){
+  try{ await api('/api/alerts/'+id,{method:'DELETE'}); }catch{}
+  store.alerts=(store.alerts||[]).filter(a=>a.id!==id);
+  renderAlertsDD();
+}
 
 /* ═══════════════════════════════════════════
    USER DATA
@@ -3423,7 +3518,7 @@ function renderWallets(){
         :`<button class="btn btn-ghost" style="flex:1" onclick="goPage('billing')">🔒 Лимит ${limit} · открыть тариф</button>`}
       ${ws.length?`<button class="btn btn-ghost" onclick="syncAllWallets()">⟳ Обновить</button>`:''}
     </div>
-    <p style="font-size:.66rem;color:var(--t3);line-height:1.5;margin-bottom:14px">Только просмотр по публичному адресу — приватные ключи не нужны и не хранятся. Показан баланс нативной монеты сети (без токенов ERC-20/Jetton). Курс — CoinGecko.</p>
+    <p style="font-size:.66rem;color:var(--t3);line-height:1.5;margin-bottom:14px">Только просмотр по публичному адресу — приватные ключи не нужны и не хранятся. Показан баланс нативной монеты сети (без токенов ERC-20/Jetton). Курс — CoinGecko.${isPro()?' Балансы обновляются автоматически примерно раз в час.':' Авто-обновление раз в час — на тарифе Pro; на бесплатном обновляй кнопкой.'}</p>
 
     ${ws.length?ws.map(w=>{
       const c=walletChain(w.chain);
@@ -3658,7 +3753,19 @@ function nwHistoryCard(){
       <span>${pts.length?new Date(pts[0].day).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):''}</span>
       <span>сегодня</span>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <span style="font-size:.66rem;color:var(--t3);flex:1">🔔 Оповещать о просадке капитала</span>
+      <select class="finput" style="width:auto;padding:4px 8px;font-size:.7rem" onchange="setNwAlertPct(this.value)">
+        ${[0,5,10,15,20,25].map(p=>`<option value="${p}" ${Number(currentUser.nwAlertPct)===p?'selected':''}>${p===0?'выкл':'−'+p+'%'}</option>`).join('')}
+      </select>
+    </div>
   </div>`;
+}
+async function setNwAlertPct(v){
+  const pct=Number(v);
+  currentUser.nwAlertPct=pct;
+  await pushMe({nwAlertPct:pct});
+  showToast(pct===0?'Оповещения о просадке выключены':`Оповещать при просадке −${pct}%`);
 }
 
 function renderCapital(){
@@ -5240,7 +5347,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal();closeWalletModal();closeWealthAssetModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAlerts();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal();closeSupportThread();closeSimTradeModal();closeWalletModal();closeWealthAssetModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

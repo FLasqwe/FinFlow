@@ -27,6 +27,7 @@ const patchSchema = z.object({
   accentHue: z.number().int().min(0).max(360).optional(),
   dashboardWidgets: z.array(z.object({ id: z.string(), visible: z.boolean() })).optional(),
   watchlist: z.array(z.string().max(20)).max(50).optional(),
+  nwAlertPct: z.number().min(0).max(90).optional(),
 });
 const FIELD_TO_COLUMN = {
   name: 'name',
@@ -38,6 +39,7 @@ const FIELD_TO_COLUMN = {
   accentHue: 'accent_hue',
   dashboardWidgets: 'dashboard_widgets',
   watchlist: 'watchlist',
+  nwAlertPct: 'nw_alert_pct',
 };
 const JSON_FIELDS = new Set(['dashboardWidgets', 'watchlist']);
 router.patch('/', async (req, res) => {
