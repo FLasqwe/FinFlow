@@ -166,8 +166,24 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
 CREATE TABLE IF NOT EXISTS events (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
-  type       TEXT NOT NULL,        -- register | login | login_2fa | 2fa_enable | promo_redeem | account_create | tier_change
+  type       TEXT NOT NULL,        -- register | login | login_2fa | 2fa_enable | promo_redeem | account_create | tier_change | email_verified
   meta       JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);
+
+-- ── Подтверждение почты ──────────────────────────────────────
+-- Существующие юзеры считаются подтверждёнными (DEFAULT true); при регистрации
+-- новым явно ставится false.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS email_codes (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose    TEXT NOT NULL DEFAULT 'verify',   -- verify (позже: reset)
+  code_hash  TEXT NOT NULL,                    -- SHA-256 от 6-значного кода
+  expires_at TIMESTAMPTZ NOT NULL,
+  attempts   INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);

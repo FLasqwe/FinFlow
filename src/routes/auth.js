@@ -13,8 +13,25 @@ const {
   verifyTotp,
 } = require('../auth');
 const { logEvent } = require('../events');
+const { sendVerifyCode } = require('../email');
+const requireAuth = require('../middleware/requireAuth');
+const crypto = require('crypto');
 
 const router = express.Router();
+
+const genCode = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+const hashCode = (c) => crypto.createHash('sha256').update(c).digest('hex');
+
+/** Создаёт новый код подтверждения почты (старые для этого юзера гасит). Возвращает код. */
+async function issueVerifyCode(userId) {
+  const code = genCode();
+  await pool.query("DELETE FROM email_codes WHERE user_id=$1 AND purpose='verify'", [userId]);
+  await pool.query(
+    "INSERT INTO email_codes (user_id, purpose, code_hash, expires_at) VALUES ($1,'verify',$2, now() + interval '15 minutes')",
+    [userId, hashCode(code)]
+  );
+  return code;
+}
 
 const REFRESH_COOKIE = 'ff_refresh';
 const cookieOpts = () => ({
@@ -42,6 +59,7 @@ function toPublicUser(row) {
     accentHue: row.accent_hue,
     dashboardWidgets: row.dashboard_widgets,
     twofa: row.totp_enabled,
+    emailVerified: row.email_verified !== false,
     createdAt: row.created_at,
     tier: p.tier,
     tierUntil: p.tierUntil,
@@ -87,8 +105,18 @@ router.post('/register', async (req, res) => {
     [normalizedEmail, passwordHash, name, surname || null]
   );
   const user = result.rows[0];
+  // новый пользователь — почта не подтверждена
+  await pool.query('UPDATE users SET email_verified=false WHERE id=$1', [user.id]);
+  user.email_verified = false;
+
   const accessToken = await issueSession(res, user.id);
   logEvent(user.id, 'register', { email: user.email });
+
+  // код на почту — «в фоне», регистрацию не роняем, если письмо не ушло
+  issueVerifyCode(user.id)
+    .then((code) => sendVerifyCode(user.email, code))
+    .catch((e) => console.error('verify email send failed:', e.message));
+
   res.status(201).json({ accessToken, user: toPublicUser(user) });
 });
 
@@ -171,6 +199,64 @@ router.post('/logout', async (req, res) => {
     await pool.query('DELETE FROM refresh_tokens WHERE token_hash=$1', [hashRefreshToken(token)]);
   }
   res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
+  res.json({ ok: true });
+});
+
+// ── POST /api/auth/verify-email — подтвердить почту 6-значным кодом ──
+const verifyEmailSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
+router.post('/verify-email', requireAuth, async (req, res) => {
+  const parsed = verifyEmailSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Введи 6-значный код' });
+
+  const u = (await pool.query('SELECT * FROM users WHERE id=$1', [req.userId])).rows[0];
+  if (!u) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (u.email_verified) return res.json({ ok: true, user: toPublicUser(u) });
+
+  const row = (
+    await pool.query(
+      "SELECT * FROM email_codes WHERE user_id=$1 AND purpose='verify' ORDER BY created_at DESC LIMIT 1",
+      [req.userId]
+    )
+  ).rows[0];
+  if (!row) return res.status(400).json({ error: 'Код не запрашивался — нажми «Отправить снова»' });
+  if (new Date(row.expires_at).getTime() < Date.now()) return res.status(410).json({ error: 'Код истёк — запроси новый' });
+  if (row.attempts >= 5) return res.status(429).json({ error: 'Слишком много попыток — запроси новый код' });
+
+  if (hashCode(parsed.data.code) !== row.code_hash) {
+    await pool.query('UPDATE email_codes SET attempts = attempts + 1 WHERE id=$1', [row.id]);
+    return res.status(401).json({ error: 'Неверный код' });
+  }
+
+  await pool.query('UPDATE users SET email_verified=true WHERE id=$1', [req.userId]);
+  await pool.query("DELETE FROM email_codes WHERE user_id=$1 AND purpose='verify'", [req.userId]);
+  logEvent(req.userId, 'email_verified');
+  const fresh = (await pool.query('SELECT * FROM users WHERE id=$1', [req.userId])).rows[0];
+  res.json({ ok: true, user: toPublicUser(fresh) });
+});
+
+// ── POST /api/auth/verify-email/resend — прислать новый код (кулдаун 60 сек) ──
+router.post('/verify-email/resend', requireAuth, async (req, res) => {
+  const u = (await pool.query('SELECT email, email_verified FROM users WHERE id=$1', [req.userId])).rows[0];
+  if (!u) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (u.email_verified) return res.json({ ok: true, alreadyVerified: true });
+
+  const last = (
+    await pool.query(
+      "SELECT created_at FROM email_codes WHERE user_id=$1 AND purpose='verify' ORDER BY created_at DESC LIMIT 1",
+      [req.userId]
+    )
+  ).rows[0];
+  if (last && Date.now() - new Date(last.created_at).getTime() < 60_000) {
+    return res.status(429).json({ error: 'Новый код можно запросить через минуту' });
+  }
+
+  const code = await issueVerifyCode(req.userId);
+  try {
+    await sendVerifyCode(u.email, code);
+  } catch (e) {
+    console.error('resend verify email failed:', e.message);
+    return res.status(502).json({ error: 'Не удалось отправить письмо, попробуй позже' });
+  }
   res.json({ ok: true });
 });
 

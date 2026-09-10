@@ -162,6 +162,17 @@ body { -webkit-tap-highlight-color: transparent; }
 }
 body.is-offline .net-pill { display: inline-flex; }
 
+/* баннер подтверждения почты */
+.verify-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: hsla(45,90%,55%,.14); border-bottom: 1px solid hsla(45,90%,55%,.3);
+  color: var(--t1); font-size: .74rem; padding: 8px 16px;
+}
+.verify-banner button {
+  margin-left: auto; background: var(--acc); color: #fff; border: 0;
+  border-radius: 7px; padding: 4px 12px; font: inherit; font-weight: 700; cursor: pointer;
+}
+
 /* Pro-гейтинг */
 .nav-btn.nav-locked { opacity: .55; }
 .nav-btn.nav-locked::after { content: '🔒'; font-size: .7em; margin-left: auto; opacity: .8; }
@@ -1456,6 +1467,10 @@ canvas { display: block; max-width: 100%; }
         </div>
       </div>
     </header>
+    <div class="verify-banner" id="verify-banner" hidden>
+      <span>📧 Подтверди почту, чтобы не потерять доступ к аккаунту</span>
+      <button onclick="openVerifyModal()">Подтвердить</button>
+    </div>
     <div class="content" id="content"></div>
   </div>
 
@@ -1578,6 +1593,14 @@ canvas { display: block; max-width: 100%; }
   </div>
 </div>
 
+<!-- VERIFY EMAIL MODAL -->
+<div class="overlay" id="verify-modal" style="display:none" onclick="if(event.target===this)closeVerifyModal()">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hd"><span class="modal-title">Подтверждение почты</span><button class="modal-close" onclick="closeVerifyModal()">✕</button></div>
+    <div id="verify-modal-body"></div>
+  </div>
+</div>
+
 <button class="fab" onclick="openAddModal()" title="Добавить">+</button>
 <div class="toast" id="toast"></div>
 
@@ -1682,6 +1705,7 @@ function mapUser(u){
     accentHue:(u.accentHue!=null?u.accentHue:252),
     dashboardWidgets:Array.isArray(u.dashboardWidgets)?u.dashboardWidgets:null,
     twofa:!!u.twofa,
+    emailVerified:u.emailVerified!==false,
     joinedAt:u.createdAt||new Date().toISOString(),
     tier:u.tier||'free',
     tierUntil:u.tierUntil||null,
@@ -1899,6 +1923,7 @@ async function doRegister(){
     currentUser=mapUser(r.user);
     if(regAvatar&&regAvatar!==currentUser.avatar){currentUser.avatar=regAvatar;pushMe({avatar:regAvatar})}
     await enterApp();
+    if(currentUser.emailVerified===false)openVerifyModal();
   }catch(e){
     showErr('r-general-err',e.status===409?'Аккаунт с таким email уже существует':(e.message||'Не удалось зарегистрироваться'));
   }finally{if(btn)btn.disabled=false}
@@ -1994,6 +2019,7 @@ async function enterApp(){
     showToast('⚠ Не удалось загрузить данные: '+(e.message||e),true);
   }
   updateTierUI();
+  updateVerifyBanner();
   goPage('dashboard');
   if(typeof refreshInstallUI==='function')refreshInstallUI();
 }
@@ -4164,7 +4190,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();
@@ -4245,6 +4271,60 @@ function updateOnlineStatus(){ document.body.classList.toggle('is-offline',!navi
 window.addEventListener('online',()=>{ updateOnlineStatus(); showToast('🟢 Соединение восстановлено'); });
 window.addEventListener('offline',()=>{ updateOnlineStatus(); showToast('⚠ Нет соединения — данные могут быть устаревшими',true); });
 updateOnlineStatus();
+
+/* ═══════════════════════════════════════════
+   ПОДТВЕРЖДЕНИЕ ПОЧТЫ
+═══════════════════════════════════════════ */
+let _verifyCooldown=0,_verifyTimer=null;
+function updateVerifyBanner(){
+  const b=document.getElementById('verify-banner');
+  if(b)b.hidden=!(currentUser&&currentUser.emailVerified===false);
+}
+function openVerifyModal(){
+  closeMoreSheet();closeDD();
+  renderVerifyModal();
+  document.getElementById('verify-modal').style.display='grid';
+  setTimeout(()=>document.getElementById('ve-code')?.focus(),60);
+}
+function closeVerifyModal(){const m=document.getElementById('verify-modal');if(m)m.style.display='none';clearInterval(_verifyTimer)}
+function renderVerifyModal(){
+  const email=currentUser?currentUser.email:'';
+  const disabled=_verifyCooldown>0;
+  document.getElementById('verify-modal-body').innerHTML=`
+    <p style="font-size:.78rem;color:var(--t2);line-height:1.5;margin-bottom:12px">Код отправлен на <b style="color:var(--t1)">${email}</b>. Введи 6 цифр из письма.</p>
+    <input class="finput" id="ve-code" inputmode="numeric" maxlength="6" placeholder="000000" style="text-align:center;letter-spacing:.5em;font-size:1.2rem" onkeydown="if(event.key==='Enter')submitVerifyEmail()"/>
+    <div class="ferr" id="ve-err" style="margin-top:6px"><span>⚠</span><span></span></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="submitVerifyEmail()">Подтвердить</button>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" id="ve-resend" ${disabled?'disabled':''} onclick="resendVerifyEmail()">${disabled?`Отправить снова (${_verifyCooldown})`:'Отправить снова'}</button>`;
+}
+async function submitVerifyEmail(){
+  const inp=document.getElementById('ve-code');const err=document.getElementById('ve-err');
+  err.classList.remove('show');
+  const code=(inp.value||'').trim();
+  if(!/^\d{6}$/.test(code)){err.querySelector('span:last-child').textContent='Нужно 6 цифр';err.classList.add('show');return}
+  try{
+    const r=await api('/api/auth/verify-email',{method:'POST',body:{code}});
+    if(r.user)currentUser=mapUser(r.user);
+    closeVerifyModal();updateVerifyBanner();
+    showToast('✅ Почта подтверждена');
+  }catch(e){
+    err.querySelector('span:last-child').textContent=e.status===401?'Неверный код':(e.message||'Ошибка');
+    err.classList.add('show');
+  }
+}
+async function resendVerifyEmail(){
+  try{
+    await api('/api/auth/verify-email/resend',{method:'POST'});
+    showToast('📧 Новый код отправлен');
+    _verifyCooldown=60;
+    clearInterval(_verifyTimer);
+    _verifyTimer=setInterval(()=>{ _verifyCooldown--; if(_verifyCooldown<=0)clearInterval(_verifyTimer); if(document.getElementById('verify-modal').style.display==='grid')renderVerifyModal(); },1000);
+    renderVerifyModal();
+  }catch(e){
+    const err=document.getElementById('ve-err');
+    if(err){err.querySelector('span:last-child').textContent=e.message||'Не удалось отправить';err.classList.add('show')}
+  }
+}
 
 /* ═══════════════════════════════════════════
    INIT — восстановление сессии
