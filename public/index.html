@@ -42,13 +42,14 @@
   --n10: hsl(228,20%,7%);
 
   /* Surface roles */
-  --bg:      var(--n10);
-  --s1:      var(--n9);
-  --s2:      var(--n8);
-  --s3:      var(--n7);
+  --bg:      hsl(228,26%,5%);
+  --s1:      hsl(228,20%,9%);
+  --s2:      hsl(228,18%,12%);
+  --s3:      hsl(228,16%,17%);
   --s4:      var(--n6);
-  --border:  hsl(228,16%,20%);
-  --border2: hsl(228,14%,26%);
+  --border:  hsl(228,16%,17%);
+  --border2: hsl(228,14%,24%);
+  --card-hi: hsla(0,0%,100%,0.04);   /* верхний блик карточки */
 
   /* Text roles */
   --t1: hsl(228,20%,96%);
@@ -81,9 +82,16 @@
   --shadow:    0 4px 16px hsla(0,0%,0%,0.45);
   --shadow-lg: 0 12px 48px hsla(0,0%,0%,0.6), 0 0 0 1px var(--border);
   --shadow-glow: 0 4px 24px var(--acc-glow);
+  /* Мягкая многослойная тень карточки */
+  --shadow-card: 0 1px 2px hsla(0,0%,0%,.35), 0 6px 20px -8px hsla(0,0%,0%,.5);
+  --shadow-pop:  0 2px 6px hsla(0,0%,0%,.4), 0 18px 50px -12px hsla(0,0%,0%,.6);
 
   /* Radii */
   --r1: 4px; --r2: 8px; --r3: 12px; --r4: 16px; --r5: 22px; --r6: 32px;
+
+  /* Motion */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
 
   /* Sidebar */
   --sidebar-w: 228px;
@@ -110,6 +118,7 @@
   --s4:      hsl(228,12%,85%);
   --border:  hsl(228,14%,86%);
   --border2: hsl(228,12%,76%);
+  --card-hi: hsla(0,0%,100%,0.7);
 
   --t1: hsl(228,24%,12%);
   --t2: hsl(228,14%,36%);
@@ -138,6 +147,8 @@
   --shadow:    0 4px 16px hsla(0,0%,0%,0.10);
   --shadow-lg: 0 12px 48px hsla(0,0%,0%,0.16), 0 0 0 1px var(--border);
   --shadow-glow: 0 4px 24px var(--acc-glow);
+  --shadow-card: 0 1px 2px hsla(0,0%,0%,.06), 0 8px 24px -10px hsla(228,30%,20%,.18);
+  --shadow-pop:  0 2px 8px hsla(0,0%,0%,.08), 0 20px 50px -14px hsla(228,30%,20%,.22);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -196,16 +207,27 @@ body.is-offline .net-pill { display: inline-flex; }
 .sheet-item.nav-locked::after { content: '🔒'; margin-left: auto; font-size: .8em; }
 
 /* Крипто-first: hero чистого капитала */
-.nw-hero {
+.card.nw-hero {
   cursor: pointer;
-  background: linear-gradient(135deg, hsl(var(--acc-h),62%,20%), hsl(calc(var(--acc-h) + 30),58%,26%));
-  border: 1px solid hsla(var(--acc-h),60%,55%,.35);
-  color: #fff;
+  background:
+    radial-gradient(130% 150% at 92% -10%, hsla(var(--acc-h),85%,64%,.45), transparent 58%),
+    linear-gradient(135deg, hsl(var(--acc-h),56%,30%), hsl(calc(var(--acc-h) + 38),52%,38%));
+  border: 1px solid hsla(var(--acc-h),65%,66%,.4);
+  color: #fff; overflow: hidden;
 }
-.nw-hero-label { font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
-.nw-hero-value { font-size: 2rem; font-weight: 900; margin: 4px 0 8px; letter-spacing: -.02em; }
-.nw-hero-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: .68rem; opacity: .92; }
-.nw-hero-row b { font-weight: 800; }
+.nw-hero-label { font-size: .6rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .72; position: relative; }
+.nw-hero-value {
+  font-size: 2.35rem; font-weight: 900; margin: 6px 0 10px; letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums; position: relative; line-height: 1.05;
+}
+.nw-hero-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: .68rem; opacity: .92; position: relative; }
+.nw-hero-row b { font-weight: 800; font-variant-numeric: tabular-nums; }
+/* мини-график за числом капитала */
+.nw-hero-spark {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+  opacity: .38; pointer-events: none; mix-blend-mode: soft-light;
+}
+.nw-hero-spark svg { width: 100%; height: 100%; display: block; }
 .watch-star {
   background: none; border: 0; cursor: pointer; font-size: 1.05rem; line-height: 1;
   color: var(--t3); padding: 2px 4px; -webkit-tap-highlight-color: transparent;
@@ -509,13 +531,14 @@ body {
 .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
 .topbar {
   height: var(--topbar-h);
-  background: var(--s1);
+  background: color-mix(in srgb, var(--s1) 78%, transparent);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 22px; flex-shrink: 0;
   position: sticky; top: 0; z-index: 20;
   transition: background 0.28s, border-color 0.28s;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
 }
 .topbar-l { display: flex; align-items: center; gap: 10px; }
 .topbar-title { font-size: 0.94rem; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
@@ -645,13 +668,14 @@ body {
 }
 .btn:active { transform: scale(0.96); }
 .btn-primary {
-  background: var(--acc); color: #fff;
+  background: linear-gradient(135deg, hsl(var(--acc-h),82%,66%), hsl(calc(var(--acc-h) + 22),78%,58%));
+  color: #fff;
   padding: 8px 15px;
-  box-shadow: 0 2px 12px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+  box-shadow: 0 2px 14px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.16);
 }
 .btn-primary:hover {
-  background: var(--acc2);
-  box-shadow: 0 4px 18px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.1);
+  filter: brightness(1.06);
+  box-shadow: 0 6px 22px var(--acc-glow), inset 0 1px 0 hsla(0,0%,100%,0.16);
   transform: translateY(-1px);
 }
 .btn-ghost {
@@ -669,10 +693,27 @@ body {
   background: var(--s1);
   border-radius: var(--r4); border: 1px solid var(--border);
   padding: 18px;
-  transition: background 0.28s, border-color 0.28s;
+  transition: background .28s, border-color .28s, transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
   position: relative;
+  box-shadow: var(--shadow-card);
+}
+/* тонкий верхний блик — «стекло» (под контентом) */
+.card::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, var(--card-hi), transparent 44%);
 }
 .card-sm { padding: 12px 14px; }
+/* интерактивная карточка — лёгкий подъём на hover */
+.card-int { cursor: pointer; }
+@media (hover: hover) {
+  .card-int:hover { transform: translateY(-3px); box-shadow: var(--shadow-pop); border-color: var(--border2); }
+}
+/* карточка с наклоном за курсором (JS ставит --rx/--ry) */
+.tilt {
+  transform: perspective(800px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)) translateY(var(--tl, 0));
+  transition: transform .3s var(--ease-out), box-shadow .3s var(--ease-out);
+  transform-style: preserve-3d; will-change: transform;
+}
 .ctitle {
   font-size: 0.60rem; font-weight: 800; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--t3); margin-bottom: 13px;
@@ -1295,18 +1336,27 @@ canvas { display: block; max-width: 100%; }
   /* нижняя навигация */
   .mobilebar {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
-    background: var(--s1); border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--s1) 80%, transparent);
+    border-top: 1px solid var(--border);
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
   }
   .mb-btn {
-    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
     background: none; border: none; cursor: pointer;
-    color: var(--t3); font-size: .58rem; font-weight: 600; padding: 5px 0;
-    -webkit-tap-highlight-color: transparent;
+    color: var(--t3); font-size: .58rem; font-weight: 600; padding: 6px 0 4px;
+    -webkit-tap-highlight-color: transparent; position: relative;
+    transition: color .16s var(--ease-out);
   }
-  .mb-btn .mb-ico { font-size: 1.15rem; line-height: 1; }
+  .mb-btn .mb-ico { font-size: 1.15rem; line-height: 1; transition: transform .2s var(--ease-spring); }
   .mb-btn.on { color: var(--acc); }
+  .mb-btn.on .mb-ico { transform: translateY(-1px) scale(1.08); }
+  .mb-btn.on::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 22px; height: 3px; border-radius: 0 0 4px 4px; background: var(--acc);
+    box-shadow: 0 0 12px var(--acc-glow);
+  }
   .mb-add {
     flex: 0 0 52px;
   }
@@ -1348,6 +1398,39 @@ canvas { display: block; max-width: 100%; }
   .sheet-sep { height: 1px; background: var(--border); margin: 6px 8px; }
 }
 @keyframes sheetup { from { transform: translateY(100%) } to { transform: translateY(0) } }
+
+/* ═══════════════════════════════════════════════════════
+   ДВИЖЕНИЕ — «живые данные»
+═══════════════════════════════════════════════════════ */
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes popIn  { from { opacity: 0; transform: scale(.94) } to { opacity: 1; transform: none } }
+@keyframes flashUp   { 0% { background-color: var(--green-b); color: var(--green) } 100% { background-color: transparent } }
+@keyframes flashDown { 0% { background-color: var(--red-b);   color: var(--red)   } 100% { background-color: transparent } }
+@keyframes sheen { to { background-position: 200% 0 } }
+
+/* появление страницы — контент и его прямые дети со сдвигом-каскадом */
+.page-in { animation: riseIn .32s var(--ease-out) both; }
+.page-in > * { animation: riseIn .42s var(--ease-out) both; }
+.page-in > *:nth-child(1){ animation-delay: .02s } .page-in > *:nth-child(2){ animation-delay: .06s }
+.page-in > *:nth-child(3){ animation-delay: .10s } .page-in > *:nth-child(4){ animation-delay: .14s }
+.page-in > *:nth-child(5){ animation-delay: .18s } .page-in > *:nth-child(6){ animation-delay: .22s }
+.page-in > *:nth-child(n+7){ animation-delay: .26s }
+
+/* вспышка значения при обновлении */
+.flash-up   { animation: flashUp .9s ease-out; border-radius: 6px; }
+.flash-down { animation: flashDown .9s ease-out; border-radius: 6px; }
+
+/* моноширинные цифры для денег */
+.tnum, .nw-hero-value, .rp-big { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* спарклайн-подложка в карточке */
+.spark-bg { position: absolute; left: 0; right: 0; bottom: 0; height: 42px; opacity: .35; pointer-events: none; }
+.spark-bg svg { width: 100%; height: 100%; display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  .tilt { transform: none !important; }
+}
 
 /* ── Отчёт по капиталу ── */
 #report-modal { align-items: start; }
@@ -2426,6 +2509,77 @@ function render(){
   else if(curPage==='markets')renderMarkets(el);
   else if(curPage==='crypto')renderCrypto(el);
   else if(curPage==='profile')el.innerHTML=renderProfile();
+  afterRender(el);
+}
+
+/* ── Пост-рендер: анимация появления + «живые» доводки ── */
+let _lastRenderPage=null;
+const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function afterRender(el){
+  const changed = curPage!==_lastRenderPage;
+  _lastRenderPage=curPage;
+  if(changed && !REDUCED_MOTION){
+    el.classList.remove('page-in'); void el.offsetWidth; el.classList.add('page-in');
+  }
+  // count-up для числа чистого капитала (на экранах «Капитал» и «Дашборд»)
+  el.querySelectorAll('.nw-hero-value[data-to]').forEach(node=>{
+    const to=parseFloat(node.getAttribute('data-to'))||0;
+    const prev=node.__nwShown;
+    if(prev==null || changed){ animateCount(node, prev==null?to*0.82:prev, to, node.__fmt||fmt); }
+    else if(Math.abs(to-prev)>Math.max(1,Math.abs(prev)*0.0005)){ animateCount(node, prev, to, node.__fmt||fmt); flashValue(node, to>=prev?'up':'down'); }
+    else { node.textContent=(node.__fmt||fmt)(to); }
+    node.__nwShown=to;
+  });
+  applyTilt(el);
+}
+function animateCount(node, from, to, fmtFn){
+  if(REDUCED_MOTION){ node.textContent=fmtFn(to); return; }
+  const t0=performance.now(), dur=760;
+  cancelAnimationFrame(node.__raf);
+  const step=now=>{
+    const p=Math.min(1,(now-t0)/dur);
+    const e=1-Math.pow(1-p,4); // easeOutQuart
+    node.textContent=fmtFn(from+(to-from)*e);
+    if(p<1)node.__raf=requestAnimationFrame(step);
+  };
+  node.__raf=requestAnimationFrame(step);
+}
+function flashValue(node, dir){
+  if(REDUCED_MOTION||!node)return;
+  const cls=dir==='down'?'flash-down':'flash-up';
+  node.classList.remove('flash-up','flash-down'); void node.offsetWidth; node.classList.add(cls);
+  setTimeout(()=>node.classList.remove(cls),950);
+}
+/* hover-наклон карточек .tilt (только мышь, не тач) */
+let _tiltBound=false;
+function applyTilt(scope){
+  if(REDUCED_MOTION||!window.matchMedia||!window.matchMedia('(hover: hover)').matches)return;
+  (scope||document).querySelectorAll('.tilt:not([data-tilt])').forEach(card=>{
+    card.setAttribute('data-tilt','1');
+    card.addEventListener('pointermove',e=>{
+      const r=card.getBoundingClientRect();
+      const dx=(e.clientX-r.left)/r.width-0.5, dy=(e.clientY-r.top)/r.height-0.5;
+      card.style.setProperty('--rx', (dx*6).toFixed(2)+'deg');
+      card.style.setProperty('--ry', (-dy*6).toFixed(2)+'deg');
+      card.style.setProperty('--tl', '-2px');
+    });
+    card.addEventListener('pointerleave',()=>{
+      card.style.setProperty('--rx','0deg'); card.style.setProperty('--ry','0deg'); card.style.setProperty('--tl','0');
+    });
+  });
+}
+/* SVG-спарклайн: массив чисел → <svg> строка */
+function sparkSvg(vals, opts={}){
+  const w=opts.w||120, h=opts.h||40, pad=2;
+  if(!vals||vals.length<2)return '';
+  let mn=Math.min(...vals), mx=Math.max(...vals); if(mn===mx){mn-=1;mx+=1;}
+  const xs=vals.map((_,i)=>pad+i*(w-2*pad)/(vals.length-1));
+  const y=v=>pad+(1-(v-mn)/(mx-mn))*(h-2*pad);
+  const line=vals.map((v,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const up=vals[vals.length-1]>=vals[0];
+  const col=opts.color||(up?'var(--green)':'var(--red)');
+  const area=opts.fill!==false?`<path d="${line} L${xs[xs.length-1].toFixed(1)},${h} L${xs[0].toFixed(1)},${h} Z" fill="${col}" opacity="0.16"/>`:'';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${area}<path d="${line}" fill="none" stroke="${col}" stroke-width="${opts.sw||1.6}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
 /* ═══════════════════════════════════════════
@@ -2537,9 +2691,11 @@ function dashWidgetHTML(id,ctx){
     const nw=netWorth();
     const by=cryptoById();
     const btc=by['bitcoin'];
-    return `<div class="card nw-hero" onclick="goCapital()">
+    const hp=((store.networth&&store.networth.history)||[]).slice(-48).map(p=>convertAmount(p.total,p.currency||baseCurrency,baseCurrency));
+    return `<div class="card nw-hero card-int" onclick="goCapital()">
+      ${hp.length>=2?`<div class="nw-hero-spark">${sparkSvg(hp,{w:320,h:80,color:'#fff',fill:false,sw:1.4})}</div>`:''}
       <div class="nw-hero-label">Чистый капитал</div>
-      <div class="nw-hero-value">${fmt(nw.total)}</div>
+      <div class="nw-hero-value" data-to="${nw.total}">${fmt(nw.total)}</div>
       <div class="nw-hero-row">
         <span>💳 Счета <b>${fmtNum(nw.accSum)}</b></span>
         ${nw.walSum?`<span>🪙 Кошельки <b>${fmtNum(nw.walSum)}</b></span>`:''}
@@ -3851,11 +4007,13 @@ function renderCapital(){
     </div>`;
   }).join('');
 
+  const hpts=((store.networth&&store.networth.history)||[]).slice(-48).map(p=>convertAmount(p.total,p.currency||baseCurrency,baseCurrency));
   return `
   <div style="max-width:680px">
-    <div class="card nw-hero" style="cursor:default;background:linear-gradient(135deg,hsl(245,45%,26%),hsl(280,42%,28%))">
+    <div class="card nw-hero tilt" style="cursor:default">
+      ${hpts.length>=2?`<div class="nw-hero-spark">${sparkSvg(hpts,{w:320,h:80,color:'#fff',fill:false,sw:1.4})}</div>`:''}
       <div class="nw-hero-label">Чистый капитал</div>
-      <div class="nw-hero-value">${fmt(cd.total)}</div>
+      <div class="nw-hero-value" data-to="${cd.total}">${fmt(cd.total)}</div>
       <div class="nw-hero-row"><span>${srcCount} ${srcCount===1?'источник':'источников'} в ${cd.order.length} ${cd.order.length===1?'классе активов':'классах активов'}</span></div>
     </div>
 
