@@ -1427,6 +1427,20 @@ canvas { display: block; max-width: 100%; }
 .spark-bg { position: absolute; left: 0; right: 0; bottom: 0; height: 42px; opacity: .35; pointer-events: none; }
 .spark-bg svg { width: 100%; height: 100%; display: block; }
 
+/* ── экран «Капитал»: пончик + полосы распределения ── */
+@keyframes donutIn { from { opacity: 0; transform: scale(.66) rotate(-130deg) } to { opacity: 1; transform: none } }
+@keyframes barGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+.donut { animation: donutIn .72s var(--ease-spring) both; }
+.alloc-item { padding: 8px 0; }
+.alloc-item + .alloc-item { border-top: 1px solid var(--border); }
+.alloc-head { display: flex; align-items: center; gap: 8px; }
+.alloc-head .ah-dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.alloc-head .ah-name { flex: 1; font-size: .77rem; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alloc-head .ah-val { font-size: .77rem; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; }
+.alloc-head .ah-pct { font-size: .66rem; color: var(--t3); width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+.alloc-track { height: 5px; border-radius: 999px; background: var(--s3); overflow: hidden; margin-top: 7px; }
+.alloc-fill { height: 100%; border-radius: inherit; transform-origin: left; animation: barGrow .8s var(--ease-out) both; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   .tilt { transform: none !important; }
@@ -3975,14 +3989,17 @@ function renderCapital(){
   const manualCount=(store.assets||[]).filter(a=>!a.archived).length;
   const srcCount=store.accounts.filter(a=>!a.archived).length+(store.wallets||[]).length+manualCount+(isPro()?store.portfolio.length:0);
 
-  const legend=cd.order.map(id=>{
+  const legend=cd.order.map((id,i)=>{
     const m=capClass(id); const sum=cd.buckets[id].sum;
     const pct=cd.total>0?sum/cd.total*100:0;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0">
-      <span style="width:9px;height:9px;border-radius:3px;background:${m.c};flex:none"></span>
-      <span style="flex:1;font-size:.76rem;color:var(--t2)">${m.e} ${m.l}</span>
-      <span style="font-size:.76rem;font-weight:800;color:var(--t1)">${fmt(sum)}</span>
-      <span style="font-size:.66rem;color:var(--t3);width:38px;text-align:right">${pct.toFixed(0)}%</span>
+    return `<div class="alloc-item">
+      <div class="alloc-head">
+        <span class="ah-dot" style="background:${m.c}"></span>
+        <span class="ah-name">${m.e} ${m.l}</span>
+        <span class="ah-val">${fmt(sum)}</span>
+        <span class="ah-pct">${pct.toFixed(0)}%</span>
+      </div>
+      <div class="alloc-track"><div class="alloc-fill" style="width:${Math.max(pct,1.5).toFixed(1)}%;background:${m.c};animation-delay:${(i*0.06).toFixed(2)}s"></div></div>
     </div>`;
   }).join('');
 
@@ -3997,11 +4014,11 @@ function renderCapital(){
             <button class="wl-act" title="Удалить" onclick="deleteWealthAsset('${it.id}')">✕</button>`
           :`<button class="wl-act" title="Открыть" onclick="goPage('${it.page}')">→</button>`}
       </div>`).join('');
-    return `<div class="card" style="margin-bottom:10px">
+    return `<div class="card tilt" style="margin-bottom:10px;border-left:3px solid ${m.c}">
       <div style="display:flex;align-items:center;gap:10px">
         <div class="tx-cat" style="background:${m.c}2e;font-size:16px">${m.e}</div>
         <div style="flex:1"><div class="tx-name">${m.l}</div><div class="tx-meta">${bk.items.length} ${bk.items.length===1?'источник':'источников'}</div></div>
-        <div style="text-align:right"><div class="tx-amt">${fmt(bk.sum)}</div><div style="font-size:.64rem;color:var(--t3)">${cd.total>0?(bk.sum/cd.total*100).toFixed(0):0}% капитала</div></div>
+        <div style="text-align:right"><div class="tx-amt tnum">${fmt(bk.sum)}</div><div style="font-size:.64rem;color:var(--t3)">${cd.total>0?(bk.sum/cd.total*100).toFixed(0):0}% капитала</div></div>
       </div>
       ${rows}
     </div>`;
@@ -4030,15 +4047,15 @@ function renderCapital(){
     ${cd.order.length?`
     <div class="card" style="margin-bottom:12px">
       <div class="ctitle">Распределение</div>
-      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-        <div style="position:relative;width:132px;height:132px;flex:none">
-          <div style="width:100%;height:100%;border-radius:50%;background:${capDonut(cd)}"></div>
-          <div style="position:absolute;inset:22px;border-radius:50%;background:var(--s1);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 1px var(--border) inset">
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative;width:140px;height:140px;flex:none">
+          <div class="donut" style="width:100%;height:100%;border-radius:50%;background:${capDonut(cd)}"></div>
+          <div style="position:absolute;inset:23px;border-radius:50%;background:var(--s1);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 0 1px var(--border) inset">
             <div style="font-size:.55rem;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Всего</div>
-            <div style="font-size:.8rem;font-weight:900;color:var(--t1);text-align:center;line-height:1.1">${fmtByMagnitude(cd.total)}</div>
+            <div class="tnum" style="font-size:.82rem;font-weight:900;color:var(--t1);text-align:center;line-height:1.1">${fmtByMagnitude(cd.total)}</div>
           </div>
         </div>
-        <div style="flex:1;min-width:180px">${legend}</div>
+        <div style="flex:1;min-width:190px">${legend}</div>
       </div>
     </div>
     ${sections}
