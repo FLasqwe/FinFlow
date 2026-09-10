@@ -187,6 +187,20 @@ body.is-offline .net-pill { display: inline-flex; }
 .tier-card-name { font-size: .95rem; }
 .tier-card-body div { font-size: .72rem; color: var(--t2); padding: 3px 0; display: flex; gap: 6px; line-height: 1.4; }
 .tier-card-body div span { color: var(--t3); }
+
+/* Цели */
+.goal-card { transition: border-color .2s, transform .12s; }
+.goal-card.goal-done { border-color: hsla(150,60%,50%,.4); background: linear-gradient(180deg, hsla(150,60%,45%,.06), transparent); }
+.g-icon.sel { border-color: var(--acc) !important; background: hsla(var(--acc-h),70%,55%,.16) !important; }
+.sheet-item.nav-locked { opacity: .5; }
+.sheet-item.nav-locked::after { content: '🔒'; margin-left: auto; font-size: .8em; }
+
+/* Полировка: мягкий подъём карточек и кнопок на десктопе */
+@media (hover: hover) and (min-width: 769px) {
+  .card:not(.card-sm):hover, .bud-card:hover, .tier-card:hover, .goal-card:hover, .port-row:hover { transform: translateY(-2px); }
+  .card, .bud-card, .tier-card, .goal-card, .port-row { transition: transform .14s ease, border-color .2s ease, box-shadow .2s ease; }
+  .btn:hover { filter: brightness(1.08); }
+}
 html, body { height: 100%; }
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -1406,6 +1420,7 @@ canvas { display: block; max-width: 100%; }
       <button class="nav-btn" data-page="accounts" onclick="goPage('accounts')"><span class="nav-ico">▤</span>Счета</button>
       <button class="nav-btn" data-page="budgets" onclick="goPage('budgets')"><span class="nav-ico">◎</span>Бюджеты</button>
       <button class="nav-btn" data-page="recurring" onclick="goPage('recurring')"><span class="nav-ico">↻</span>Регулярные</button>
+      <button class="nav-btn" data-page="goals" onclick="goPage('goals')"><span class="nav-ico">◎</span>Цели</button>
       <button class="nav-btn" data-page="analytics" onclick="goPage('analytics')"><span class="nav-ico">▣</span>Аналитика</button>
       <div class="nav-lbl">Рынки</div>
       <button class="nav-btn" data-page="portfolio" onclick="goPage('portfolio')"><span class="nav-ico">💼</span>Портфель</button>
@@ -1490,6 +1505,7 @@ canvas { display: block; max-width: 100%; }
     <div class="sheet-grip"></div>
     <button class="sheet-item" data-page="budgets" onclick="moreGo('budgets')"><span class="si-ico">◎</span>Бюджеты</button>
     <button class="sheet-item" data-page="recurring" onclick="moreGo('recurring')"><span class="si-ico">↻</span>Регулярные</button>
+    <button class="sheet-item" data-page="goals" onclick="moreGo('goals')"><span class="si-ico">◎</span>Цели</button>
     <button class="sheet-item" data-page="analytics" onclick="moreGo('analytics')"><span class="si-ico">▣</span>Аналитика</button>
     <button class="sheet-item" data-page="portfolio" onclick="moreGo('portfolio')"><span class="si-ico">💼</span>Портфель</button>
     <button class="sheet-item" data-page="markets" onclick="moreGo('markets')"><span class="si-ico">📈</span>Рынки</button>
@@ -1598,6 +1614,22 @@ canvas { display: block; max-width: 100%; }
   <div class="modal" style="max-width:380px">
     <div class="modal-hd"><span class="modal-title">Подтверждение почты</span><button class="modal-close" onclick="closeVerifyModal()">✕</button></div>
     <div id="verify-modal-body"></div>
+  </div>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="overlay" id="goal-modal" style="display:none" onclick="if(event.target===this)closeGoalModal()">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd"><span class="modal-title">Цель</span><button class="modal-close" onclick="closeGoalModal()">✕</button></div>
+    <div id="goal-modal-body"></div>
+  </div>
+</div>
+
+<!-- CONTRIBUTE MODAL -->
+<div class="overlay" id="contrib-modal" style="display:none" onclick="if(event.target===this)closeContribModal()">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-hd"><span class="modal-title">Пополнить цель</span><button class="modal-close" onclick="closeContribModal()">✕</button></div>
+    <div id="contrib-modal-body"></div>
   </div>
 </div>
 
@@ -1719,12 +1751,14 @@ const TIER_RANK={free:0,pro:1,premium:2,business:3};
 const TIER_LABEL={free:'Free',pro:'Pro',premium:'Premium',business:'Business'};
 function hasTier(min){return !!currentUser && (TIER_RANK[currentUser.tier]||0) >= (TIER_RANK[min]||99)}
 function isPro(){return hasTier('pro')}
-const PRO_PAGES=['portfolio','markets','crypto','recurring'];
+const PAGE_TIER={portfolio:'pro',markets:'pro',crypto:'pro',recurring:'pro',goals:'premium'};
+const PRO_PAGES=Object.keys(PAGE_TIER);
+function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 /* API-холдинг портфеля → фронтенд ждёт поле `e` вместо `icon` */
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],billing:null,admin:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -1732,17 +1766,23 @@ async function loadAllData(){
   await api('/api/accounts').then(r=>{store.accounts=r.accounts||[]}).catch(()=>{store.accounts=[]});
   const txR=await api('/api/transactions');
   const gate=(fallback)=>(e)=>{ if(e&&e.status===402)return fallback; throw e; }; // фича за пейволом → пусто
-  const [budR,portR,recR,billR]=await Promise.all([
+  const [budR,portR,recR,goalR,billR]=await Promise.all([
     api('/api/budgets'),
     api('/api/portfolio').catch(gate({holdings:[]})),
     api('/api/recurring').catch(gate({rules:[]})),
+    api('/api/goals').catch(gate({goals:[]})),
     api('/api/billing').catch(()=>null),
   ]);
   store.tx=txR.transactions||[];
   store.budgets=budR.budgets||{};
   store.portfolio=(portR.holdings||[]).map(mapHolding);
   store.recurring=recR.rules||[];
+  store.goals=goalR.goals||[];
   store.billing=billR;
+}
+async function reloadGoals(){
+  const r=await api('/api/goals');
+  store.goals=r.goals||[];
 }
 async function reloadAccounts(){
   const r=await api('/api/accounts');
@@ -2082,8 +2122,8 @@ function tExp(txs){return txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.am
 const MOBILEBAR_PAGES=['dashboard','transactions','accounts'];
 function goPage(p){
   if(p==='admin'&&!(currentUser&&currentUser.isAdmin))p='dashboard';
-  // Фича за пейволом и тариф не Pro → ведём на экран «Тариф».
-  if(PRO_PAGES.includes(p)&&!isPro())p='billing';
+  // Раздел за пейволом и тариф ниже нужного → ведём на экран «Тариф».
+  if(pageLocked(p))p='billing';
   curPage=p;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
   // нижняя навигация: подсветить вкладку либо «Ещё», если страница не из основных
@@ -2091,7 +2131,7 @@ function goPage(p){
     b.classList.toggle('on', b.dataset.page===p || (b.dataset.page==='__more' && !MOBILEBAR_PAGES.includes(p)));
   });
   document.querySelectorAll('.sheet-item[data-page]').forEach(b=>b.classList.toggle('on',b.dataset.page===p));
-  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф',admin:'Админка'};
+  const titles={dashboard:'Дашборд',transactions:'Транзакции',accounts:'Счета',budgets:'Бюджеты',recurring:'Регулярные',goals:'Цели',analytics:'Аналитика',portfolio:'Портфель',markets:'Рынки',crypto:'Криптовалюты',profile:'Профиль',billing:'Тариф',admin:'Админка'};
   document.getElementById('page-title').textContent=titles[p]||p;
   document.getElementById('budget-topbtn').style.display=p==='budgets'?'':'none';
   filterCat=null;filterType='all';render();
@@ -2105,10 +2145,9 @@ function haptic(ms){ try{ navigator.vibrate && navigator.vibrate(ms||8) }catch{}
 
 /* Замок на пунктах меню ниже нужного тарифа + бейдж в меню аккаунта. */
 function updateTierUI(){
-  const pro=isPro();
   PRO_PAGES.forEach(pg=>{
-    const btn=document.querySelector(`.nav-btn[data-page="${pg}"]`);
-    if(btn)btn.classList.toggle('nav-locked',!pro);
+    const locked=pageLocked(pg);
+    document.querySelectorAll(`.nav-btn[data-page="${pg}"], .sheet-item[data-page="${pg}"]`).forEach(b=>b.classList.toggle('nav-locked',locked));
   });
   const badge=document.getElementById('dd-plan-badge');
   if(badge){
@@ -2136,6 +2175,7 @@ function render(){
   else if(curPage==='recurring')el.innerHTML=renderRecurring();
   else if(curPage==='billing')el.innerHTML=renderBilling();
   else if(curPage==='accounts')el.innerHTML=renderAccounts();
+  else if(curPage==='goals')el.innerHTML=renderGoals();
   else if(curPage==='admin')el.innerHTML=renderAdmin();
   else if(curPage==='analytics'){el.innerHTML=renderAnalytics();drawBar();drawBal()}
   else if(curPage==='portfolio')renderPortfolio(el);
@@ -2153,6 +2193,7 @@ function render(){
 const ALL_WIDGETS=[
   {id:'stats',name:'Карточки итогов',icon:'💰'},
   {id:'accounts',name:'Счета и капитал',icon:'▤'},
+  {id:'goals',name:'Цели',icon:'🎯'},
   {id:'areaChart',name:'Динамика месяца',icon:'📈'},
   {id:'pieChart',name:'Расходы по категориям',icon:'🥧'},
   {id:'insights',name:'Инсайты',icon:'💡'},
@@ -2271,6 +2312,17 @@ function dashWidgetHTML(id,ctx){
   if(id==='recent')return`<div class="card"><div class="ctitle">Последние операции</div>${recent.length?recent.map(t=>txRow(t,false)).join(''):`<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">Нет операций</div></div>`}</div>`;
   if(id==='portfolioSummary')return dashPortfolioWidget();
   if(id==='marketTicker')return dashMarketTickerWidget();
+  if(id==='goals'){
+    const gs=store.goals;
+    if(!gs.length)return '';
+    return `<div class="card" style="cursor:pointer" onclick="goPage('goals')">
+      <div class="ctitle">Цели</div>
+      ${gs.slice(0,3).map(g=>{const color=g.color||GOAL_COLORS[0];return `<div style="margin:8px 0">
+        <div style="display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:4px"><span style="color:var(--t2)">${g.icon||'🎯'} ${g.name}</span><span style="color:var(--t3)">${g.pct}%</span></div>
+        <div style="height:6px;background:var(--s3);border-radius:99px;overflow:hidden"><div style="height:100%;width:${g.pct}%;background:${color};border-radius:99px;transition:width .5s ease"></div></div>
+      </div>`}).join('')}
+    </div>`;
+  }
   if(id==='accounts'){
     const accs=store.accounts.filter(a=>!a.archived);
     if(!accs.length)return'';
@@ -2818,6 +2870,157 @@ async function deleteAccount(id){
     await Promise.all([reloadAccounts(),reloadTransactions()]);
     render();
     showToast('🗑 Счёт удалён');
+  }catch(e){ showToast('❌ '+(e.message||e),true) }
+}
+
+/* ═══════════════════════════════════════════
+   ЦЕЛИ НАКОПЛЕНИЙ
+═══════════════════════════════════════════ */
+const GOAL_ICONS=['🎯','🏖','✈️','🚗','🏠','💍','🎓','💻','📱','🎁','🐷','💰'];
+const GOAL_COLORS=['#7c5cff','#3b82f6','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6'];
+function goalRing(pct,color,size){
+  const s=size||64, R=(s/2)-6, C=2*Math.PI*R, off=C*(1-Math.min(100,Math.max(0,pct))/100);
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="flex:none">
+    <circle cx="${s/2}" cy="${s/2}" r="${R}" fill="none" stroke="var(--s3)" stroke-width="6"/>
+    <circle cx="${s/2}" cy="${s/2}" r="${R}" fill="none" stroke="${color||'var(--acc)'}" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 ${s/2} ${s/2})" style="transition:stroke-dashoffset .6s cubic-bezier(.16,1,.3,1)"/>
+    <text x="${s/2}" y="${s/2+5}" text-anchor="middle" fill="var(--t1)" font-size="${s*0.22}" font-weight="800">${pct}%</text>
+  </svg>`;
+}
+function goalDeadlineLabel(g){
+  if(!g.deadline)return 'без срока';
+  const d=new Date(g.deadline).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'2-digit'});
+  if(g.done)return 'к '+d;
+  if(g.daysLeft<0)return 'срок прошёл · '+d;
+  if(g.daysLeft===0)return 'сегодня';
+  if(g.daysLeft<=31)return d+' · '+g.daysLeft+' дн.';
+  return 'к '+d;
+}
+function renderGoals(){
+  const gs=store.goals;
+  const totalTarget=gs.reduce((s,g)=>s+g.target,0), totalSaved=gs.reduce((s,g)=>s+g.saved,0);
+  const list=!gs.length
+    ? `<div class="empty" style="padding:54px 0"><div class="empty-ico">🎯</div><div class="empty-t">Целей пока нет</div><p style="font-size:.75rem;color:var(--t3);margin:8px 0 16px">Поставь цель — «отпуск», «подушка безопасности», «новый ноут» — и следи за прогрессом.</p><button class="btn btn-primary" onclick="openGoalModal()">+ Новая цель</button></div>`
+    : gs.map(g=>{
+        const color=g.color||GOAL_COLORS[0];
+        return `<div class="card goal-card${g.done?' goal-done':''}" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+          ${goalRing(g.pct,color,66)}
+          <div style="flex:1;min-width:0">
+            <div class="tx-name" style="font-size:.9rem">${g.icon||'🎯'} ${g.name}${g.done?' <span style="color:var(--green);font-size:.8em">🎉</span>':''}</div>
+            <div class="tx-meta">${fmt(g.saved)} из ${fmt(g.target)}</div>
+            <div style="font-size:.66rem;color:var(--t3);margin-top:3px">${goalDeadlineLabel(g)}${(!g.done&&g.perMonth)?` · нужно ${fmt(g.perMonth)}/мес`:''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <button class="btn btn-primary" style="font-size:.68rem;padding:4px 10px" onclick="openContribModal('${g.id}')">Пополнить</button>
+            <div style="display:flex;gap:4px;justify-content:flex-end">
+              <button class="tx-del" title="Изменить" onclick="openGoalModal('${g.id}')">✎</button>
+              <button class="tx-del" title="Удалить" onclick="deleteGoal('${g.id}')">✕</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+  return `
+  <div style="max-width:640px">
+    ${gs.length?`<div class="card" style="text-align:center;padding:18px;margin-bottom:14px">
+      <div style="font-size:.6rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Всего по целям</div>
+      <div style="font-size:1.35rem;font-weight:900;color:var(--t1);margin-top:3px">${fmt(totalSaved)} <span style="color:var(--t3);font-size:.7em">из ${fmt(totalTarget)}</span></div>
+    </div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="ps-title" style="margin:0;padding:0;border:none">Мои цели</div>
+      ${gs.length?`<button class="btn btn-primary" onclick="openGoalModal()">+ Новая цель</button>`:''}
+    </div>
+    ${list}
+  </div>`;
+}
+
+let editingGoalId=null, contribGoalId=null;
+function openGoalModal(id){
+  editingGoalId=id||null;
+  const g=id?store.goals.find(x=>x.id===id):null;
+  document.getElementById('goal-modal-body').innerHTML=`
+    <div style="margin-bottom:11px"><label class="flbl">Название</label><input class="finput" id="g-name" maxlength="80" value="${g?(g.name||'').replace(/"/g,'&quot;'):''}" placeholder="Напр. «Отпуск в Японии»"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px">
+      <div><label class="flbl">Цель (${currInfo().sym})</label><input class="finput" type="number" step="any" id="g-target" value="${g?g.target:''}" placeholder="0"/></div>
+      <div><label class="flbl">Дата (необязательно)</label><input class="finput" type="date" id="g-deadline" value="${g&&g.deadline?g.deadline:''}"/></div>
+    </div>
+    <label class="flbl">Иконка</label>
+    <div id="g-icons" style="display:flex;flex-wrap:wrap;gap:6px;margin:5px 0 12px">
+      ${GOAL_ICONS.map(ic=>`<button type="button" class="g-icon${(g?g.icon:GOAL_ICONS[0])===ic?' sel':''}" onclick="gPickIcon('${ic}',this)" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--s2);font-size:1rem;cursor:pointer">${ic}</button>`).join('')}
+    </div>
+    <label class="flbl">Цвет</label>
+    <div id="g-colors" style="display:flex;gap:8px;margin:5px 0 14px">
+      ${GOAL_COLORS.map(c=>`<button type="button" onclick="gPickColor('${c}',this)" data-c="${c}" style="width:28px;height:28px;border-radius:50%;border:2px solid ${(g?g.color:GOAL_COLORS[0])===c?'var(--t1)':'transparent'};background:${c};cursor:pointer;box-shadow:0 0 0 1px var(--border)"></button>`).join('')}
+    </div>
+    <div class="ferr" id="g-err" style="margin-bottom:8px"><span>⚠</span><span></span></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="submitGoal()">${g?'Сохранить':'Создать цель'}</button>`;
+  document.getElementById('goal-modal-body').dataset.icon=(g?g.icon:GOAL_ICONS[0])||GOAL_ICONS[0];
+  document.getElementById('goal-modal-body').dataset.color=(g?g.color:GOAL_COLORS[0])||GOAL_COLORS[0];
+  document.getElementById('goal-modal').style.display='grid';
+}
+function closeGoalModal(){const m=document.getElementById('goal-modal');if(m)m.style.display='none'}
+function gPickIcon(ic,btn){document.getElementById('goal-modal-body').dataset.icon=ic;document.querySelectorAll('#g-icons .g-icon').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel')}
+function gPickColor(c,btn){document.getElementById('goal-modal-body').dataset.color=c;document.querySelectorAll('#g-colors button').forEach(b=>b.style.borderColor='transparent');btn.style.borderColor='var(--t1)'}
+async function submitGoal(){
+  const err=document.getElementById('g-err'); err.classList.remove('show');
+  const fail=m=>{err.querySelector('span:last-child').textContent=m;err.classList.add('show')};
+  const name=document.getElementById('g-name').value.trim();
+  const target=parseFloat((document.getElementById('g-target').value||'').replace(',','.'));
+  if(!name)return fail('Введи название');
+  if(!target||target<=0)return fail('Цель должна быть больше нуля');
+  const ds=document.getElementById('goal-modal-body').dataset;
+  const body={name,target,icon:ds.icon,color:ds.color};
+  const dl=document.getElementById('g-deadline').value;
+  body.deadline=dl||null;
+  try{
+    if(editingGoalId)await api('/api/goals/'+editingGoalId,{method:'PATCH',body});
+    else await api('/api/goals',{method:'POST',body});
+    closeGoalModal();
+    await reloadGoals();
+    render();
+    showToast(editingGoalId?'✅ Цель обновлена':'🎯 Цель создана');
+  }catch(e){
+    if(e.status===402){ closeGoalModal(); showToast(e.message||'Цели — на тарифе Premium',true); goPage('billing'); return; }
+    fail(e.message||'Не удалось сохранить');
+  }
+}
+function openContribModal(id){
+  contribGoalId=id;
+  const g=store.goals.find(x=>x.id===id);
+  document.getElementById('contrib-modal-body').innerHTML=`
+    <p style="font-size:.78rem;color:var(--t2);margin-bottom:10px">${g.icon||'🎯'} <b style="color:var(--t1)">${g.name}</b> — ${fmt(g.saved)} из ${fmt(g.target)}</p>
+    <label class="flbl">Сумма (${currInfo().sym}) — минус чтобы снять</label>
+    <input class="finput" type="number" step="any" id="c-amount" placeholder="0" onkeydown="if(event.key==='Enter')submitContrib()"/>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      ${[1000,5000,10000,50000].map(v=>`<button class="btn btn-ghost" style="flex:1;font-size:.72rem;padding:4px" onclick="document.getElementById('c-amount').value=${v}">+${fmtNum(v)}</button>`).join('')}
+    </div>
+    <div class="ferr" id="c-err" style="margin-top:6px"><span>⚠</span><span></span></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px" onclick="submitContrib()">Внести</button>`;
+  document.getElementById('contrib-modal').style.display='grid';
+  setTimeout(()=>document.getElementById('c-amount')?.focus(),60);
+}
+function closeContribModal(){const m=document.getElementById('contrib-modal');if(m)m.style.display='none'}
+async function submitContrib(){
+  const amount=parseFloat((document.getElementById('c-amount').value||'').replace(',','.'));
+  const err=document.getElementById('c-err');
+  if(!amount){err.querySelector('span:last-child').textContent='Введи сумму';err.classList.add('show');return}
+  try{
+    const r=await api('/api/goals/'+contribGoalId+'/contribute',{method:'POST',body:{amount}});
+    closeContribModal();
+    await reloadGoals();
+    render();
+    haptic(12);
+    showToast(r.goal.done?'🎉 Цель достигнута!':'✅ Пополнено');
+  }catch(e){
+    err.querySelector('span:last-child').textContent=e.message||'Ошибка';err.classList.add('show');
+  }
+}
+async function deleteGoal(id){
+  if(!confirm('Удалить цель?'))return;
+  try{
+    await api('/api/goals/'+id,{method:'DELETE'});
+    await reloadGoals();
+    render();
+    showToast('🗑 Цель удалена');
   }catch(e){ showToast('❌ '+(e.message||e),true) }
 }
 
@@ -4190,7 +4393,7 @@ function closeHoldingDetail(){closeAssetModal()}
    KEYBOARD
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal()}
+  if(e.key==='Escape'){closeAddModal();closeBudgetModal();closeDD();closeAssetModal();closeHoldingModal();closeDashSettings();closeTwofaModal();closeRecurringModal();closeAccountModal();closeMoreSheet();closeAdminUser();closeVerifyModal();closeGoalModal();closeContribModal()}
   if(e.key==='Enter'&&document.getElementById('add-modal').style.display==='grid')submitTx();
   if(e.key==='Enter'&&document.getElementById('auth-screen').style.display!=='none'){
     if(document.getElementById('form-login').style.display!=='none')doLogin();

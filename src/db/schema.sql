@@ -187,3 +187,19 @@ CREATE TABLE IF NOT EXISTS email_codes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_codes(user_id, purpose);
+
+-- ── Цели накоплений (тариф Premium) ─────────────────────────
+CREATE TABLE IF NOT EXISTS goals (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  target      NUMERIC(18,2) NOT NULL CHECK (target > 0),
+  saved       NUMERIC(18,2) NOT NULL DEFAULT 0,   -- накоплено (сумма пополнений)
+  deadline    DATE,
+  icon        TEXT,
+  color       TEXT,
+  account_id  UUID REFERENCES accounts(id) ON DELETE SET NULL,
+  archived    BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
