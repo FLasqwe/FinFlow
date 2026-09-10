@@ -21,6 +21,7 @@ const supportRouter = require('./routes/support');
 const simRouter = require('./routes/sim');
 const walletsRouter = require('./routes/wallets');
 const assetsRouter = require('./routes/assets');
+const networthRouter = require('./routes/networth');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/support', supportRouter);
 app.use('/api/sim', simRouter);
 app.use('/api/wallets', walletsRouter);
 app.use('/api/assets', assetsRouter);
+app.use('/api/networth', networthRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 

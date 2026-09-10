@@ -292,3 +292,16 @@ CREATE TABLE IF NOT EXISTS assets (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id);
+
+-- ── Снимки чистого капитала (по одному на день, для графика динамики) ──
+-- Считает и присылает фронтенд (там вся логика курсов/конвертации);
+-- сервер хранит дневной upsert.
+CREATE TABLE IF NOT EXISTS networth_snapshots (
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day        DATE NOT NULL DEFAULT CURRENT_DATE,
+  total      NUMERIC(20,2) NOT NULL,
+  currency   TEXT NOT NULL DEFAULT 'USD',
+  breakdown  JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, day)
+);

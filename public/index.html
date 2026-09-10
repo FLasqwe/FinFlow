@@ -1822,7 +1822,7 @@ function pageLocked(p){return !!PAGE_TIER[p] && !hasTier(PAGE_TIER[p])}
 function mapHolding(h){return {...h,e:h.icon||'💼',lots:h.lots||[]}}
 
 /* ── in-memory кэш данных текущего пользователя ── */
-const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null,wallets:null,assets:null};
+const store={tx:[],budgets:{},portfolio:[],recurring:[],accounts:[],goals:[],billing:null,admin:null,support:null,sim:null,wallets:null,assets:null,networth:null};
 
 async function loadAllData(){
   // /api/accounts до транзакций (создаёт дефолтный счёт и подхватывает старые tx);
@@ -1847,6 +1847,27 @@ async function loadAllData(){
   store.billing=billR;
   store.wallets=walR.wallets||[];
   store.assets=astR.assets||[];
+  try{ store.networth=await api('/api/networth?days=365'); }catch{ store.networth={history:[]}; }
+}
+async function reloadNetworth(){
+  try{ store.networth=await api('/api/networth?days=365'); }catch{}
+}
+/* Раз в день пишем снимок чистого капитала (upsert на сервере). Фронтенд —
+   единственный, кто знает курсы и конвертацию, поэтому считает он. */
+async function snapshotNetWorth(){
+  try{
+    const day=new Date().toISOString().slice(0,10);
+    if(ld('ff_nw_snap','')===day)return;
+    if(!fxRates)await ensureFxRates();
+    const nw=netWorth();
+    if(!isFinite(nw.total))return;
+    let breakdown=null;
+    try{ const cd=capitalData(); breakdown={}; cd.order.forEach(id=>breakdown[id]=Math.round(cd.buckets[id].sum)); }catch{}
+    await api('/api/networth/snapshot',{method:'POST',body:{total:Math.round(nw.total),currency:baseCurrency,breakdown}});
+    sv('ff_nw_snap',day);
+    await reloadNetworth();
+    if(curPage==='capital')render();
+  }catch(e){ /* тихо: снимок не критичен */ }
 }
 async function reloadWallets(){
   const r=await api('/api/wallets');
@@ -2139,6 +2160,7 @@ async function enterApp(){
   updateVerifyBanner();
   goPage('capital');
   if(typeof refreshInstallUI==='function')refreshInstallUI();
+  snapshotNetWorth();
 }
 function avatarHTML(user,size='emoji'){
   if(user.photo)return`<img src="${user.photo}" alt="av"/>`;
@@ -3575,6 +3597,70 @@ async function goCapital(){
   try{ await Promise.all([reloadWallets().catch(()=>{}),reloadAssets().catch(()=>{})]); if(curPage==='capital')render(); }catch(e){}
 }
 
+/* ── График динамики чистого капитала ── */
+let nwRange=90;
+function setNwRange(d){ nwRange=d; render(); }
+function nwSeries(){
+  const h=(store.networth&&store.networth.history)||[];
+  if(!h.length)return [];
+  const cutoff=nwRange>0?Date.now()-nwRange*86400000:0;
+  return h.filter(p=>new Date(p.day).getTime()>=cutoff)
+    .map(p=>({day:p.day, v:convertAmount(p.total, p.currency||baseCurrency, baseCurrency)}));
+}
+function nwChartSvg(pts){
+  const W=600,H=140,pad=10;
+  const xs=pts.map((_,i)=>pts.length>1?pad+i*(W-2*pad)/(pts.length-1):W/2);
+  const vals=pts.map(p=>p.v);
+  let mn=Math.min(...vals),mx=Math.max(...vals);
+  if(mn===mx){mn-=1;mx+=1;}
+  const span=mx-mn;
+  const y=v=>pad+(1-(v-mn)/span)*(H-2*pad);
+  const line=pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const area=`${line} L${xs[xs.length-1].toFixed(1)},${H} L${xs[0].toFixed(1)},${H} Z`;
+  const up=pts[pts.length-1].v>=pts[0].v;
+  const col=up?'var(--green)':'var(--red)';
+  const lx=xs[xs.length-1].toFixed(1),ly=y(pts[pts.length-1].v).toFixed(1);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:132px;display:block">
+    <defs><linearGradient id="nwg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${col}" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#nwg)"/>
+    <path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${lx}" cy="${ly}" r="3.5" fill="${col}"/>
+  </svg>`;
+}
+function nwHistoryCard(){
+  const h=(store.networth&&store.networth.history)||[];
+  if(h.length<2){
+    return `<div class="card" style="margin-bottom:12px">
+      <div class="ctitle">Динамика</div>
+      <p style="font-size:.74rem;color:var(--t3);line-height:1.5">${h.length?'Первый снимок сегодня.':'Снимки ещё не собраны.'} График появится, когда наберётся история — заходи раз в день, и капитал будет записываться автоматически.</p>
+    </div>`;
+  }
+  const pts=nwSeries();
+  const ranges=[[30,'30д'],[90,'3м'],[365,'год'],[0,'всё']];
+  let deltaHtml='';
+  if(pts.length>=2){
+    const first=pts[0].v,last=pts[pts.length-1].v;
+    const d=last-first, pct=first!==0?d/Math.abs(first)*100:0, up=d>=0;
+    deltaHtml=`<span style="font-size:.72rem;font-weight:800;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${fmt(Math.abs(d))} (${pct.toFixed(1)}%)</span>`;
+  }
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+      <span class="ctitle" style="margin:0">Динамика ${deltaHtml}</span>
+      <span style="display:flex;gap:4px">
+        ${ranges.map(([d,l])=>`<button class="wl-act" style="${nwRange===d?'background:var(--acc-dim);color:var(--acc);border-color:var(--acc)':''}" onclick="setNwRange(${d})">${l}</button>`).join('')}
+      </span>
+    </div>
+    ${pts.length>=2?nwChartSvg(pts):'<p style="font-size:.72rem;color:var(--t3)">За выбранный период меньше двух точек.</p>'}
+    <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--t3);margin-top:4px">
+      <span>${pts.length?new Date(pts[0].day).toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):''}</span>
+      <span>сегодня</span>
+    </div>
+  </div>`;
+}
+
 function renderCapital(){
   const cd=capitalData();
   const manualCount=(store.assets||[]).filter(a=>!a.archived).length;
@@ -3620,7 +3706,10 @@ function renderCapital(){
       <div class="nw-hero-row"><span>${srcCount} ${srcCount===1?'источник':'источников'} в ${cd.order.length} ${cd.order.length===1?'классе активов':'классах активов'}</span></div>
     </div>
 
-    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap">
+    <div style="height:12px"></div>
+    ${nwHistoryCard()}
+
+    <div style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="openWealthAssetModal()">＋ Добавить актив</button>
       <button class="btn btn-ghost" onclick="goPage('accounts')">💳 Счета</button>
       <button class="btn btn-ghost" onclick="goWallets()">🪙 Кошельки</button>
