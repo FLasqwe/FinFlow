@@ -730,7 +730,9 @@ body {
   border-radius: var(--r4); padding: 16px 18px;
   border: 1px solid transparent;
   position: relative; overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
+.stat .stat-val { font-variant-numeric: tabular-nums; }
 /* soft inner glow from bottom-right */
 .stat::after {
   content: ''; position: absolute; bottom: -30%; right: -20%;
@@ -2535,17 +2537,35 @@ function afterRender(el){
   if(changed && !REDUCED_MOTION){
     el.classList.remove('page-in'); void el.offsetWidth; el.classList.add('page-in');
   }
-  // count-up для числа чистого капитала (на экранах «Капитал» и «Дашборд»)
-  el.querySelectorAll('.nw-hero-value[data-to]').forEach(node=>{
+  // count-up: числа чистого капитала + любые .count-up[data-to]
+  el.querySelectorAll('.nw-hero-value[data-to], .count-up[data-to]').forEach(node=>{
     const to=parseFloat(node.getAttribute('data-to'))||0;
-    const prev=node.__nwShown;
-    if(prev==null || changed){ animateCount(node, prev==null?to*0.82:prev, to, node.__fmt||fmt); }
-    else if(Math.abs(to-prev)>Math.max(1,Math.abs(prev)*0.0005)){ animateCount(node, prev, to, node.__fmt||fmt); flashValue(node, to>=prev?'up':'down'); }
-    else { node.textContent=(node.__fmt||fmt)(to); }
-    node.__nwShown=to;
+    const fmtFn=node.getAttribute('data-fmt')==='num'?fmtNum:fmt;
+    const key=node.getAttribute('data-key')||node.className;
+    const prev=_countMem[key];
+    if(prev==null){ animateCount(node, to*0.84, to, fmtFn); }
+    else if(changed){ animateCount(node, prev, to, fmtFn); }
+    else if(Math.abs(to-prev)>Math.max(1,Math.abs(prev)*0.0005)){ animateCount(node, prev, to, fmtFn); flashValue(node, to>=prev?'up':'down'); }
+    else { node.textContent=fmtFn(to); }
+    _countMem[key]=to;
   });
+  // пульс цены в watchlist при изменении котировки
+  if(el.querySelector('[data-wprice]')){
+    const by=cryptoById();
+    el.querySelectorAll('[data-wprice]').forEach(node=>{
+      const id=node.getAttribute('data-wprice');
+      const cg=(CRYPTOS.find(c=>c.id===id)||{}).cg;
+      const px=cg&&by[cg]?by[cg].current_price:null;
+      if(px==null)return;
+      const prev=_prevPrices[id];
+      if(prev!=null && Math.abs(px-prev)/prev>0.0002 && !changed) flashValue(node, px>=prev?'up':'down');
+      _prevPrices[id]=px;
+    });
+  }
   applyTilt(el);
 }
+const _prevPrices={};
+const _countMem={};
 function animateCount(node, from, to, fmtFn){
   if(REDUCED_MOTION){ node.textContent=fmtFn(to); return; }
   const t0=performance.now(), dur=760;
@@ -2676,9 +2696,10 @@ function dashMarketTickerWidget(){
   const goldLive=mktLive.metals?mktLive.metals.data.XAU:null;
   const rows=[btc,eth].map(coin=>{
     const live=byId[coin.cg];
-    return{e:coin.e,name:coin.sym,price:live?'$'+fmtByMagnitude(live.current_price):null,chg:live?live.price_change_percentage_24h:null};
+    const sp=live&&live.sparkline_in_7d&&Array.isArray(live.sparkline_in_7d.price)?downsample(live.sparkline_in_7d.price,32):null;
+    return{e:coin.e,name:coin.sym,price:live?'$'+fmtByMagnitude(live.current_price):null,chg:live?live.price_change_percentage_24h:null,sp};
   });
-  rows.push({e:gold.e,name:'Золото',price:goldLive!=null?currInfo().sym+fmtByMagnitude(usdTo(baseCurrency,goldLive)):null,chg:null});
+  rows.push({e:gold.e,name:'Золото',price:goldLive!=null?currInfo().sym+fmtByMagnitude(usdTo(baseCurrency,goldLive)):null,chg:null,sp:null});
   if((!cryptoLive||!goldLive)&&!dashTickerLoading){
     dashTickerLoading=true;
     Promise.all([
@@ -2690,10 +2711,11 @@ function dashMarketTickerWidget(){
   return`<div class="card" style="cursor:pointer" onclick="goPage('crypto')">
     <div class="ctitle">Крипта и золото</div>
     ${rows.map(r=>`<div class="dash-ticker-row">
-      <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1)">${r.e} ${r.name}</div>
-      <div style="text-align:right">
-        <div style="font-size:.78rem;font-weight:700;color:var(--t1)">${r.price||'…'}</div>
-        ${r.chg!=null?`<div style="font-size:.63rem;font-weight:700;color:${r.chg>=0?'var(--green)':'var(--red)'}">${r.chg>=0?'▲':'▼'} ${Math.abs(r.chg).toFixed(2)}%</div>`:''}
+      <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1);flex:none">${r.e} ${r.name}</div>
+      <div style="flex:1;height:20px;margin:0 12px;opacity:.7;overflow:hidden;display:flex;align-items:center">${r.sp?sparkSvg(r.sp,{w:90,h:20,color:r.chg>=0?'var(--green)':'var(--red)',fill:false,sw:1.5}):''}</div>
+      <div style="text-align:right;flex:none">
+        <div class="tnum" style="font-size:.78rem;font-weight:700;color:var(--t1)">${r.price||'…'}</div>
+        ${r.chg!=null?`<div class="tnum" style="font-size:.63rem;font-weight:700;color:${r.chg>=0?'var(--green)':'var(--red)'}">${r.chg>=0?'▲':'▼'} ${Math.abs(r.chg).toFixed(2)}%</div>`:''}
       </div>
     </div>`).join('')}
   </div>`;
@@ -2709,7 +2731,7 @@ function dashWidgetHTML(id,ctx){
     return `<div class="card nw-hero card-int" onclick="goCapital()">
       ${hp.length>=2?`<div class="nw-hero-spark">${sparkSvg(hp,{w:320,h:80,color:'#fff',fill:false,sw:1.4})}</div>`:''}
       <div class="nw-hero-label">Чистый капитал</div>
-      <div class="nw-hero-value" data-to="${nw.total}">${fmt(nw.total)}</div>
+      <div class="nw-hero-value" data-key="nw" data-to="${nw.total}">${fmt(nw.total)}</div>
       <div class="nw-hero-row">
         <span>💳 Счета <b>${fmtNum(nw.accSum)}</b></span>
         ${nw.walSum?`<span>🪙 Кошельки <b>${fmtNum(nw.walSum)}</b></span>`:''}
@@ -2726,11 +2748,14 @@ function dashWidgetHTML(id,ctx){
     return `<div class="card"><div class="ctitle">Watchlist ⭐</div>
       ${CRYPTOS.filter(c=>wl.includes(c.id)).map(c=>{
         const l=by[c.cg];
+        const up=l&&l.price_change_percentage_24h>=0;
+        const sp=l&&l.sparkline_in_7d&&Array.isArray(l.sparkline_in_7d.price)?downsample(l.sparkline_in_7d.price,32):null;
         return `<div class="dash-ticker-row" onclick="openAssetDetail('crypto','${c.id}')" style="cursor:pointer">
-          <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1)">${c.e} ${c.sym}</div>
-          <div style="text-align:right">
-            <div style="font-size:.78rem;font-weight:700;color:var(--t1)">${l?'$'+fmtByMagnitude(l.current_price):'…'}</div>
-            ${l?`<div style="font-size:.63rem;font-weight:700;color:${l.price_change_percentage_24h>=0?'var(--green)':'var(--red)'}">${l.price_change_percentage_24h>=0?'▲':'▼'} ${Math.abs(l.price_change_percentage_24h).toFixed(2)}%</div>`:''}
+          <div style="display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--t1);flex:none">${c.e} ${c.sym}</div>
+          <div style="flex:1;height:20px;margin:0 12px;opacity:.7;overflow:hidden;display:flex;align-items:center">${sp?sparkSvg(sp,{w:90,h:20,color:up?'var(--green)':'var(--red)',fill:false,sw:1.5}):''}</div>
+          <div style="text-align:right;flex:none">
+            <div class="tnum" data-wprice="${c.id}" style="font-size:.78rem;font-weight:700;color:var(--t1)">${l?'$'+fmtByMagnitude(l.current_price):'…'}</div>
+            ${l?`<div class="tnum" style="font-size:.63rem;font-weight:700;color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(l.price_change_percentage_24h).toFixed(2)}%</div>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -2739,23 +2764,23 @@ function dashWidgetHTML(id,ctx){
   if(id==='stats')return`<div class="stats">
     <div class="stat stat-bal">
       <div class="stat-ico">💰</div><div class="stat-lbl">Баланс</div>
-      <div class="stat-val" style="color:${bal>=0?'var(--green)':'var(--red)'}">${fmt(bal)}</div>
+      <div class="stat-val count-up tnum" data-key="st-bal" data-to="${bal}" style="color:${bal>=0?'var(--green)':'var(--red)'}">${fmt(bal)}</div>
       <div class="stat-sub">${MONTHS[viewMonth]} ${viewYear}</div>
       ${inc>0?`<span class="stat-tag ${rate>=0?'tag-g':'tag-r'}">${rate>=0?'▲':'▼'} ${Math.abs(rate)}% сбережений</span>`:''}
     </div>
     <div class="stat stat-inc">
       <div class="stat-ico">📥</div><div class="stat-lbl">Доходы</div>
-      <div class="stat-val" style="color:var(--green)">${fmt(inc)}</div>
+      <div class="stat-val count-up tnum" data-key="st-inc" data-to="${inc}" style="color:var(--green)">${fmt(inc)}</div>
       <div class="stat-sub">${tx.filter(t=>t.type==='income').length} транзакций</div>
     </div>
     <div class="stat stat-exp">
       <div class="stat-ico">📤</div><div class="stat-lbl">Расходы</div>
-      <div class="stat-val" style="color:var(--red)">${fmt(exp)}</div>
+      <div class="stat-val count-up tnum" data-key="st-exp" data-to="${exp}" style="color:var(--red)">${fmt(exp)}</div>
       <div class="stat-sub">${tx.filter(t=>t.type==='expense').length} транзакций</div>
     </div>
     <div class="stat stat-sav">
       <div class="stat-ico">🏦</div><div class="stat-lbl">Накоплено</div>
-      <div class="stat-val" style="color:var(--yellow)">${fmt(Math.max(bal,0))}</div>
+      <div class="stat-val count-up tnum" data-key="st-sav" data-to="${Math.max(bal,0)}" style="color:var(--yellow)">${fmt(Math.max(bal,0))}</div>
       <div class="stat-sub">${rate>=0?rate+'% от дохода':'Дефицит'}</div>
     </div>
   </div>`;
@@ -4057,7 +4082,7 @@ function renderCapital(){
     <div class="card nw-hero tilt" style="cursor:default">
       ${hpts.length>=2?`<div class="nw-hero-spark">${sparkSvg(hpts,{w:320,h:80,color:'#fff',fill:false,sw:1.4})}</div>`:''}
       <div class="nw-hero-label">Чистый капитал</div>
-      <div class="nw-hero-value" data-to="${cd.total}">${fmt(cd.total)}</div>
+      <div class="nw-hero-value" data-key="nw" data-to="${cd.total}">${fmt(cd.total)}</div>
       <div class="nw-hero-row"><span>${srcCount} ${srcCount===1?'источник':'источников'} в ${cd.order.length} ${cd.order.length===1?'классе активов':'классах активов'}</span></div>
     </div>
 
